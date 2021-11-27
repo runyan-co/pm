@@ -7,8 +7,8 @@ use Illuminate\Container\Container;
 use Symfony\Component\Console\Helper\Table;
 use Symfony\Component\Console\Output\ConsoleOutput;
 
-if (!defined('PM_PREFIX')) {
-    define('PM_PREFIX', '');
+if (!defined('BREW_PREFIX')) {
+    define('BREW_PREFIX', (new CommandLine())->runAsUser('printf $(brew --prefix)'));
 }
 
 /**

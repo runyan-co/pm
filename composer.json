@@ -29,7 +29,7 @@
             "includes/helpers.php"
         ],
         "psr-4": {
-            "ProcessMaker\\Cli\\": "cli/ProcessMaker"
+            "ProcessMaker\\Cli\\": "cli/ProcessMaker/"
         }
     }
 }

@@ -3,7 +3,6 @@
 namespace ProcessMaker\Cli;
 
 use Symfony\Component\Process\Process;
-use Symfony\Component\Process\Exception\ProcessFailedException;
 
 class CommandLine
 {
@@ -77,19 +76,22 @@ class CommandLine
      *
      * @return string
      */
-    function runCommand(string $command, callable $onError = null): string
+    function runCommand(string $command, callable $onError = null)
     {
         $onError = $onError ? : function () {};
 
-        $process = Process::fromShellCommandline($command);
+        if (method_exists(Process::class, 'fromShellCommandline')) {
+            $process = Process::fromShellCommandline($command);
+        } else {
+            $process = new Process($command);
+        }
 
         $processOutput = '';
+        $process->setTimeout(null)->run(function ($type, $line) use (&$processOutput) {
+            $processOutput .= $line;
+        });
 
-        try {
-            $process->run(function ($type, $line) use (&$processOutput) {
-                $processOutput .= $line;
-            });
-        } catch (ProcessFailedException $exception) {
+        if ($process->getExitCode() > 0) {
             $onError($process->getExitCode(), $processOutput);
         }
 

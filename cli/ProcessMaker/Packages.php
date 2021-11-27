@@ -16,10 +16,10 @@ class Packages
 
     public $progress_bar;
 
-    public function __construct()
+    public function __construct(CommandLine $cli, FileSystem $files)
     {
-        $this->cli = new CommandLine();
-        $this->files = new FileSystem();
+        $this->cli = $cli;
+        $this->files = $files;
         $this->package_directory = getenv('HOME').'/packages/composer/processmaker';
     }
 
@@ -188,20 +188,21 @@ class Packages
      */
     public function pullPackages(bool $for_41_develop = false, string $directory = null): array
     {
-        $results = [];
-
         if (is_string($directory)) {
             if (!$this->setPackageDirectory($directory)) {
                 warning("Could not set packages directory: $directory");
 
-                return $results;
+                return [];
             }
         }
+
+        $results = [];
 
         $packages = $this->getPackages();
 
         // Commands to run in the package's directory
         $commands = [
+            'fdgdh',
             'git reset --hard',
             'git checkout {git_branch}',
             'git fetch --all',
@@ -215,12 +216,16 @@ class Packages
         // Progress bar makes it easier to keep track of
         $this->getProgressBar($commands_count)->start();
 
+        // Keep track of exceptions/errors when running commands
+        $errors = [];
+
         // Iterate through and run necessary commands to pull down
         // the latest and switch to the default branch for each
         foreach($packages as $package) {
 
             $package_directory = $package['path'];
             $package = $package['name'];
+            $errors[$package] = [];
 
             if (!is_dir($package_directory)) {
                 warning("Skipping since the package directory wasn't found: $package_directory");
@@ -257,7 +262,11 @@ class Packages
                     $command = Str::replace('{git_branch}', $this->getDefaultGitBranch($for_41_develop), $command);
                 }
 
-                $this->cli->runAsUser($command);
+                $this->cli->runAsUser($command, function ($code, $output) use (&$errors, $package) {
+                    array_push($errors[$package], [$code => $output]);
+                });
+
+                $this->getProgressBar()->advance();
             }
 
             $updated_to_version = $this->getPackageVersion($package_directory);
@@ -266,7 +275,15 @@ class Packages
                 $updated_to_version = "<info>$updated_to_version</info>";
             }
 
-            $results[] = ["processmaker/$package", $current_version, $updated_to_version, $for_41_develop ? 'Yes' : 'No'];
+            $error_count = count($errors[$package]);
+
+            $results[] = [
+                "processmaker/$package",
+                $current_version,
+                $updated_to_version,
+                $for_41_develop ? 'Yes' : 'No',
+                $error_count === 0 ? "<info>0</info>" : "<fg=red>$error_count</>"
+            ];
         }
 
         $this->getProgressBar()->finish();

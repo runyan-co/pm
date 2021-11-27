@@ -8,10 +8,10 @@ class ProcessMaker
 
     public $cli;
 
-    public function __construct()
+    public function __construct(FileSystem $files, CommandLine $cli)
     {
-        $this->files = new FileSystem();
-        $this->cli = new CommandLine();
+        $this->files = $files;
+        $this->cli = $cli;
     }
 
     /**
@@ -23,8 +23,11 @@ class ProcessMaker
     {
         $this->files->ensureDirExists('/etc/sudoers.d');
 
-        $this->files->put('/etc/sudoers.d/pm', 'Cmnd_Alias VALET = '.PM_PREFIX.'/bin/pm *
-%admin ALL=(root) NOPASSWD:SETENV: VALET'.PHP_EOL);
+        $this->files->put('/etc/sudoers.d/pm', 'Cmnd_Alias PM = '.BREW_PREFIX.'/bin/pm *
+%admin ALL=(root) NOPASSWD:SETENV: PM'.PHP_EOL);
+
+        $this->files->put('/etc/sudoers.d/brew', 'Cmnd_Alias BREW = '.BREW_PREFIX.'/bin/brew *
+%admin ALL=(root) NOPASSWD:SETENV: BREW'.PHP_EOL);
     }
 
     /**
@@ -35,5 +38,7 @@ class ProcessMaker
     function removeSudoersEntry()
     {
         $this->cli->quietly('rm /etc/sudoers.d/pm');
+
+        $this->cli->quietly('rm /etc/sudoers.d/brew');
     }
 }
