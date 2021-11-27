@@ -23,7 +23,8 @@
     },
     "autoload": {
         "files": [
-            "cli/helpers.php"
+            "includes/helpers.php",
+            "includes/facades.php"
         ],
         "psr-4": {
             "ProcessMaker\\Cli\\": "cli/ProcessMaker"

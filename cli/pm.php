@@ -20,5 +20,8 @@ Container::setInstance(new Container);
 
 $app = new Application('ProcessMaker CLI Tool', '0.5.0');
 
+$app->command('help', function () {
+	//
+});
 
-
+$app->run();

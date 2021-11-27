@@ -2,7 +2,6 @@
 
 namespace ProcessMaker\Cli;
 
-use Exception;
 use Symfony\Component\Process\Process;
 use Symfony\Component\Process\Exception\ProcessFailedException;
 
