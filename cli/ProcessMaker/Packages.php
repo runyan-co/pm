@@ -33,11 +33,11 @@ class Packages
      */
     public function setPackageDirectory(string $package_directory): bool
     {
-        if (is_dir($package_directory)) {
+        if ($this->files->isDir($package_directory)) {
             $this->package_directory = $package_directory;
         }
 
-        return is_dir($this->package_directory);
+        return $this->files->isDir($this->package_directory);
     }
 
     /**
@@ -45,18 +45,15 @@ class Packages
      *
      * @param  string|null  $package_directory
      *
-     * @return array|false
+     * @return array
      */
-    public function getPackageList(string $package_directory = null)
+    public function getPackageList(string $package_directory = null): array
     {
         if (!is_string($package_directory)) {
             $package_directory = $this->package_directory;
         }
 
-        // Filter out the "." and ".." directories
-        return array_filter(scandir($package_directory), function ($package_directory) {
-            return ! Str::contains($package_directory, ['.', '..']);
-        });
+        return $this->files->scandir($package_directory);
     }
 
     /**
@@ -76,34 +73,13 @@ class Packages
     }
 
     /**
-     * @param  string  $absolutePath
-     *
-     * @return bool
-     */
-    public function removeDirectory(string $absolutePath): bool
-    {
-        if (!is_dir($absolutePath)) {
-            warning("Could not remove directory (it does not exist): $absolutePath");
-            return false;
-        }
-
-        info("Removing directory: $absolutePath");
-
-        $this->cli->runAsUser("rm -rf $absolutePath", function ($error) use ($absolutePath) {
-            warning("Error attempting to remove $absolutePath");
-        });
-
-        return true;
-    }
-
-    /**
      * @param  string  $path_to_composer_json
      *
      * @return void|object
      */
     public function getComposerJson(string $path_to_composer_json)
     {
-        if (!is_dir($path_to_composer_json)) {
+        if (!$this->files->isDir($path_to_composer_json)) {
             return warning("Path not found: $path_to_composer_json");
         }
 
@@ -113,11 +89,11 @@ class Packages
 
         $composer_json_file = "$path_to_composer_json/composer.json";
 
-        if (!is_file($composer_json_file)) {
+        if (!$this->files->exists($composer_json_file)) {
             return warning("Composer.json not found: $composer_json_file");
         }
 
-        return json_decode(file_get_contents($composer_json_file));
+        return json_decode($this->files->get($composer_json_file));
     }
 
     /**
@@ -136,23 +112,6 @@ class Packages
         }
 
         return $composer_json->version;
-    }
-
-    /**
-     * @param  int|null  $count
-     *
-     * @return \Symfony\Component\Console\Helper\ProgressBar
-     */
-    public function getProgressBar(int $count = null): ProgressBar
-    {
-        if (!$this->progress_bar instanceof ProgressBar) {
-            $this->progress_bar = new ProgressBar(new ConsoleOutput(), $count);
-            $this->progress_bar->setRedrawFrequency(25);
-            $this->progress_bar->minSecondsBetweenRedraws(0.025);
-            $this->progress_bar->maxSecondsBetweenRedraws(0.05);
-        }
-
-        return $this->progress_bar;
     }
 
     /**
@@ -188,21 +147,20 @@ class Packages
      */
     public function pullPackages(bool $for_41_develop = false, string $directory = null): array
     {
+        $results = [];
+
         if (is_string($directory)) {
             if (!$this->setPackageDirectory($directory)) {
                 warning("Could not set packages directory: $directory");
 
-                return [];
+                return $results;
             }
         }
-
-        $results = [];
 
         $packages = $this->getPackages();
 
         // Commands to run in the package's directory
         $commands = [
-            'fdgdh',
             'git reset --hard',
             'git checkout {git_branch}',
             'git fetch --all',
@@ -214,7 +172,8 @@ class Packages
         $current_count = 0;
 
         // Progress bar makes it easier to keep track of
-        $this->getProgressBar($commands_count)->start();
+        $this->cli->getProgressBar($commands_count)
+                  ->start();
 
         // Keep track of exceptions/errors when running commands
         $errors = [];
@@ -241,11 +200,11 @@ class Packages
 
             // Delete node_modules/ and vendor/ if they exist
             if (is_dir('node_modules')) {
-                $this->removeDirectory('node_modules');
+                $this->files->rmdir('node_modules');
             }
 
             if (is_dir('vendor')) {
-                $this->removeDirectory('vendor');
+                $this->files->rmdir('vendor');
             }
 
             // Pre-update package version
@@ -266,7 +225,8 @@ class Packages
                     array_push($errors[$package], [$code => $output]);
                 });
 
-                $this->getProgressBar()->advance();
+                $this->cli->getProgressBar()
+                          ->advance();
             }
 
             $updated_to_version = $this->getPackageVersion($package_directory);
@@ -286,7 +246,7 @@ class Packages
             ];
         }
 
-        $this->getProgressBar()->finish();
+        $this->cli->getProgressBar()->finish();
 
         // Needed to separate progress bar output
         output(PHP_EOL);

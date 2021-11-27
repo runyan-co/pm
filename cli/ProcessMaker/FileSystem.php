@@ -6,6 +6,13 @@ use CommandLine as CommandLineFacade;
 
 class FileSystem
 {
+    public $cli;
+
+    public function __construct(CommandLine $cli)
+    {
+        $this->cli = $cli;
+    }
+
     /**
      * Determine if the given path is a directory.
      *
@@ -15,6 +22,28 @@ class FileSystem
     public function isDir($path)
     {
         return is_dir($path);
+    }
+
+    /**
+     * Remove a directory
+     *
+     * @param  string  $path
+     *
+     * @return bool
+     */
+    public function rmdir(string $path)
+    {
+        if (!$this->isDir($path)) {
+            return false;
+        }
+
+        $success = true;
+
+        $this->cli->runAsUser("rm -rf $path", function ($error, $output) use (&$success, $path) {
+            $success = false;
+        });
+
+        return $success;
     }
 
     /**

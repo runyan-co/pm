@@ -3,9 +3,13 @@
 namespace ProcessMaker\Cli;
 
 use Symfony\Component\Process\Process;
+use Symfony\Component\Console\Helper\ProgressBar;
+use Symfony\Component\Console\Output\ConsoleOutput;
 
 class CommandLine
 {
+    private $progressBar;
+
     /**
      * Simple global function to run commands.
      *
@@ -40,6 +44,23 @@ class CommandLine
     function passthru(string $command)
     {
         passthru($command);
+    }
+
+    /**
+     * @param  int|null  $count
+     *
+     * @return \Symfony\Component\Console\Helper\ProgressBar
+     */
+    public function getProgressBar(int $count = null): ProgressBar
+    {
+        if (!$this->progressBar instanceof ProgressBar) {
+            $this->progressBar = new ProgressBar(new ConsoleOutput(), $count);
+            $this->progressBar->setRedrawFrequency(25);
+            $this->progressBar->minSecondsBetweenRedraws(0.025);
+            $this->progressBar->maxSecondsBetweenRedraws(0.05);
+        }
+
+        return $this->progressBar;
     }
 
     /**

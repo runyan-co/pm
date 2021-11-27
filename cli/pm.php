@@ -33,7 +33,9 @@ $app->command('trust [--off]', function ($off) {
 $app->command('pull-packages [-4|--for_41_develop] [-d|--directory]',
 	function ($for_41_develop = null, $directory = null) {
 
-		info('Updating local ProcessMaker composer packages....');
+		info($for_41_develop
+			? "Updating local ProcessMaker composer packages to 4.1-develop..."
+			: "Updating local ProcessMaker composer packages...");
 
         table(['Package', 'Version', 'Updated Version', '4.1', 'Errors'],
             Packages::pullPackages($for_41_develop ?? false, $directory));
