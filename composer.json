@@ -1,0 +1,22 @@
+{
+    "name": "runyan-co/pm",
+    "description": "A lightweight cli tool to aid local develop of ProcessMaker software",
+    "type": "project",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Alex Runyan",
+            "email": "alex@runyan.co"
+        }
+    ],
+    "require": {
+        "illuminate/console": "^8.73",
+        "illuminate/support": "^8.73",
+        "illuminate/container": "^8.73"
+    },
+    "autoload": {
+        "psr-4": {
+            "RunyanCo\\Pm\\": "cli/ProcessMaker"
+        }
+    }
+}
