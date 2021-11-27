@@ -86,7 +86,7 @@ class CommandLine
         $processOutput = '';
 
         try {
-            $process->mustRun(function ($type, $line) use (&$processOutput) {
+            $process->run(function ($type, $line) use (&$processOutput) {
                 $processOutput .= $line;
             });
         } catch (ProcessFailedException $exception) {

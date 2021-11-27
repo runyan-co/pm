@@ -18,9 +18,10 @@ if [ ! -f "$DIR/cli/pm.php" ]; then
     DIR=$(php -r "echo realpath('$DIR/../runyan-co/pm');")
 fi
 
-#if [[ "$EUID" -ne 0 ]]; then
-#    USER="$USER" --preserve-env "$SOURCE" "$@"
-#    exit
-#fi
+if [[ "$EUID" -ne 0 ]]
+then
+    sudo USER="$USER" --preserve-env "$SOURCE" "$@"
+    exit
+fi
 
 php "$DIR/cli/pm.php" "$@"

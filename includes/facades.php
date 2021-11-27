@@ -31,4 +31,7 @@ class Facade
     }
 }
 
+class ProcessMaker extends Facade {}
+class FileSystem extends Facade {}
+class Packages extends Facade {}
 class CommandLine extends Facade {}
