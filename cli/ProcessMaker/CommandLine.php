@@ -8,7 +8,7 @@ use Symfony\Component\Console\Output\ConsoleOutput;
 
 class CommandLine
 {
-    private $progressBar;
+    private $progress, $output;
 
     /**
      * Simple global function to run commands.
@@ -17,7 +17,7 @@ class CommandLine
      *
      * @return void
      */
-    function quietly(string $command)
+    public function quietly(string $command)
     {
         $this->runCommand($command.' > /dev/null 2>&1');
     }
@@ -29,7 +29,7 @@ class CommandLine
      *
      * @return void
      */
-    function quietlyAsUser(string $command)
+    public function quietlyAsUser(string $command)
     {
         $this->quietly('sudo -u "'.user().'" '.$command.' > /dev/null 2>&1');
     }
@@ -41,9 +41,23 @@ class CommandLine
      *
      * @return void
      */
-    function passthru(string $command)
+    public function passthru(string $command)
     {
         passthru($command);
+    }
+
+    /**
+     * Create a ProgressBar bound to this class instance
+     *
+     * @param  int  $count
+     */
+    private function createProgressBar(int $count)
+    {
+        $this->progress = new ProgressBar(new ConsoleOutput(), $count);
+
+        $this->progress->setRedrawFrequency(25);
+        $this->progress->minSecondsBetweenRedraws(0.025);
+        $this->progress->maxSecondsBetweenRedraws(0.05);
     }
 
     /**
@@ -51,16 +65,13 @@ class CommandLine
      *
      * @return \Symfony\Component\Console\Helper\ProgressBar
      */
-    public function getProgressBar(int $count = null): ProgressBar
+    public function getProgress(int $count = null): ProgressBar
     {
-        if (!$this->progressBar instanceof ProgressBar) {
-            $this->progressBar = new ProgressBar(new ConsoleOutput(), $count);
-            $this->progressBar->setRedrawFrequency(25);
-            $this->progressBar->minSecondsBetweenRedraws(0.025);
-            $this->progressBar->maxSecondsBetweenRedraws(0.05);
+        if (!$this->progress instanceof ProgressBar) {
+            $this->createProgressBar($count);
         }
 
-        return $this->progressBar;
+        return $this->progress;
     }
 
     /**
@@ -117,5 +128,82 @@ class CommandLine
         }
 
         return $processOutput;
+    }
+
+    /**
+     * Get the console output for this instance
+     *
+     * @return \Symfony\Component\Console\Output\ConsoleOutput
+     */
+    public function getOutput(): ConsoleOutput
+    {
+        if (!$this->output instanceof ConsoleOutput) {
+            $this->output = new ConsoleOutput();
+        }
+
+        return $this->output;
+    }
+
+    /**
+     * Start a given Process and bind the output to this instance
+     *
+     * @param  \Symfony\Component\Process\Process  $process
+     */
+    private function startProcess(Process $process)
+    {
+        if ($process->isRunning()) {
+            return;
+        }
+
+        $process->start(function ($type, $line) {
+            $this->getOutput()->writeln($line);
+        });
+    }
+
+    /**
+     * Run multiple Processes in parallel
+     *
+     * @param  array  $processes
+     * @param  int $maxParallel
+     * @param  int  $poll
+     */
+    public function runParallel(array $processes, int $maxParallel, int $poll = 250)
+    {
+        // do not modify the object pointers in the argument, copy to local working variable
+        $processesQueue = array_filter($processes, function ($process) {
+            return $process instanceof Process;
+        });
+
+        // fix maxParallel to be max the number of processes or positive
+        $maxParallel = min(abs($maxParallel), count($processesQueue));
+
+        // get the first stack of processes to start at the same time
+        /** @var Process[] $currentProcesses */
+        $currentProcesses = array_splice($processesQueue, 0, $maxParallel);
+
+        // start the initial stack of processes
+        foreach ($currentProcesses as $process) {
+            $this->startProcess($process);
+        }
+
+        do {
+            // wait for the given time
+            usleep($poll);
+
+            // remove all finished processes from the stack
+            foreach ($currentProcesses as $index => $process) {
+                if (!$process->isRunning()) {
+                    unset($currentProcesses[$index]);
+
+                    // directly add and start new process after the previous finished
+                    if (count($processesQueue) > 0) {
+                        $nextProcess = array_shift($processesQueue);
+                        $this->startProcess($process);
+                        $currentProcesses[] = $nextProcess;
+                    }
+                }
+            }
+            // continue loop while there are processes being executed or waiting for execution
+        } while (count($processesQueue) > 0 || count($currentProcesses) > 0);
     }
 }

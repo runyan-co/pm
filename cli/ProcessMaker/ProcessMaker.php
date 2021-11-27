@@ -8,6 +8,8 @@ class ProcessMaker
 
     public $cli;
 
+    protected static $bin = BREW_PREFIX.'/bin/pm';
+
     public function __construct(FileSystem $files, CommandLine $cli)
     {
         $this->files = $files;
@@ -25,9 +27,6 @@ class ProcessMaker
 
         $this->files->put('/etc/sudoers.d/pm', 'Cmnd_Alias PM = '.BREW_PREFIX.'/bin/pm *
 %admin ALL=(root) NOPASSWD:SETENV: PM'.PHP_EOL);
-
-        $this->files->put('/etc/sudoers.d/brew', 'Cmnd_Alias BREW = '.BREW_PREFIX.'/bin/brew *
-%admin ALL=(root) NOPASSWD:SETENV: BREW'.PHP_EOL);
     }
 
     /**
@@ -38,7 +37,22 @@ class ProcessMaker
     function removeSudoersEntry()
     {
         $this->cli->quietly('rm /etc/sudoers.d/pm');
+    }
 
-        $this->cli->quietly('rm /etc/sudoers.d/brew');
+    function symlinkToUsersBin()
+    {
+        $this->unlinkFromUsersBin();
+
+        $this->cli->runAsUser('ln -s "'.realpath(__DIR__.'/../../pm').'" '.$this->bin);
+    }
+
+    /**
+     * Remove the symlink from the user's local bin.
+     *
+     * @return void
+     */
+    function unlinkFromUsersBin()
+    {
+        $this->cli->quietlyAsUser('rm '.$this->bin);
     }
 }

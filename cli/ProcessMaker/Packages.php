@@ -3,8 +3,6 @@
 namespace ProcessMaker\Cli;
 
 use Illuminate\Support\Str;
-use Symfony\Component\Console\Helper\ProgressBar;
-use Symfony\Component\Console\Output\ConsoleOutput;
 
 class Packages
 {
@@ -13,8 +11,6 @@ class Packages
     public $files;
 
     public $package_directory;
-
-    public $progress_bar;
 
     public function __construct(CommandLine $cli, FileSystem $files)
     {
@@ -172,7 +168,7 @@ class Packages
         $current_count = 0;
 
         // Progress bar makes it easier to keep track of
-        $this->cli->getProgressBar($commands_count)
+        $this->cli->getProgress($commands_count)
                   ->start();
 
         // Keep track of exceptions/errors when running commands
@@ -225,7 +221,7 @@ class Packages
                     array_push($errors[$package], [$code => $output]);
                 });
 
-                $this->cli->getProgressBar()
+                $this->cli->getProgress()
                           ->advance();
             }
 
@@ -246,7 +242,7 @@ class Packages
             ];
         }
 
-        $this->cli->getProgressBar()->finish();
+        $this->cli->getProgress()->finish();
 
         // Needed to separate progress bar output
         output(PHP_EOL);
