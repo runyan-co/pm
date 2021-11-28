@@ -26,7 +26,7 @@ $app->command('test', function () {
 
 	$git_branch = $for_41_develop
 		? '4.1-develop'
-		: "$(git symbolic-ref refs/remotes/origin/HEAD | sed 's@^refs/remotes/origin/@@)";
+		: "$(git symbolic-ref refs/remotes/origin/HEAD | sed 's@^refs/remotes/origin/@@')";
 
 	$package_commands = [
         'git reset --hard',
@@ -51,15 +51,13 @@ $app->command('test', function () {
 		$package_set['commands'] = array_map(function ($command) use ($package) {
 			return 'cd '.$package['path'].' && '.$command;
 		}, $package_commands);
-
-		foreach ($package_set['commands'] as $index => $command) {
-            $package_set['commands'][$index] = Packages::setGitBranchInCommandString($command);
-		}
 	}
 
-	dump($result);
+	$commands = collect($result)->transform(function (array $set) {
+		return $set['commands'];
+	})->toArray();
 
-//	ProcessManager::buildProcessesBundleAndStart($commands);
+	ProcessManager::buildProcessesBundleAndStart($commands);
 });
 
 $app->command('trust [--off]', function ($off) {

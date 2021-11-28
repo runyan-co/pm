@@ -2,9 +2,11 @@
 
 namespace ProcessMaker\Cli;
 
+use Exception;
 use LogicException;
 use React\ChildProcess\Process;
 use Illuminate\Support\Collection;
+use Symfony\Component\Console\Output\ConsoleOutput;
 
 class ProcessManager
 {
@@ -56,13 +58,16 @@ class ProcessManager
                 // Number of processes in this bundle
                 $process_count = $bundle->count();
 
-                $process->on('exit', function ($exitCode, $termSignal) use (&$bundle, $index, $process_count) {
+                $process->on('exit', function ($exitCode, $termSignal) use (&$bundle, $process, $index, $process_count) {
+
+                    // Get the command run
+                    $command = $process->getCommand();
 
                     // Return progress to stdout
                     if ($exitCode === 0) {
-                        info("Process $index finished successfully!");
+                        info("Process ($process->index): Success running \"$command\"");
                     } else {
-                        warning("Process $index failed with exit code: $exitCode");
+                        warning("Process ($process->index): Failed running \"$command\"");
                     }
 
                     // Get the next process index (if one exists)
@@ -71,7 +76,7 @@ class ProcessManager
                     // Check to make sure there's another process left
                     // in the bundle to start, if so, start it
                     if ($next_process_index !== $process_count) {
-                        $bundle->get($next_process_index)->start();
+                        $this->startProcessAndPipeOutput($bundle->get($next_process_index));
                     }
                 });
 
@@ -107,22 +112,71 @@ class ProcessManager
             throw new LogicException('No bundles of Processes found');
         }
 
-        $total_processes_to_run = 0;
+        info($this->countProcessesInBundles($bundles)." processes to run...");
 
-        $bundles->each(function ($bundle) use (&$total_processes_to_run) {
-            $total_processes_to_run = $total_processes_to_run + $bundle->count();
+        $this->getStartProcesses($bundles)->each(function (Process $process) {
+            $this->startProcessAndPipeOutput($process);
         });
+    }
 
-        info("$total_processes_to_run process to run...");
-
-        $start_processes = $this->validateBundle(
+    /**
+     * @param  \Illuminate\Support\Collection  $bundles
+     *
+     * @return \Illuminate\Support\Collection
+     */
+    private function getStartProcesses(Collection $bundles): Collection
+    {
+        return $this->validateBundle(
             $bundles->map(function (Collection $bundle) {
                 return $bundle->first();
             })
         );
+    }
 
-        $start_processes->each(function (Process $process) {
-            $process->start();
+    /**
+     * @param  \Illuminate\Support\Collection  $bundles
+     *
+     * @return int
+     */
+    private function countProcessesInBundles(Collection $bundles): int
+    {
+        $index = 0;
+        $total_processes = 0;
+
+        // Count up all of the processes
+        $bundles->each(function ($bundle) use (&$total_processes) {
+            $total_processes = $total_processes + $bundle->count();
         });
+
+        // Set the "process_index" property for each
+        // process among each bundle
+        $bundles->each(function ($bundle) use (&$index) {
+            $bundle->transform(function (Process $process) use (&$index) {
+                $process->index = $index++;
+                return $process;
+            });
+        });
+
+        return $total_processes;
+    }
+
+    /**
+     * @param  \React\ChildProcess\Process  $process
+     */
+    private function startProcessAndPipeOutput(Process $process): void
+    {
+        if ($process->isRunning()) {
+            return;
+        }
+
+        $process->start();
+
+//        $process->stdout->on('error', function (Exception $exception) {
+//            echo "Process failed with exception message: ".$exception->getMessage();
+//        });
+
+//        $process->stdout->on('data', function ($chunk) {
+//            (new ConsoleOutput())->writeln($chunk);
+//        });
     }
 }
