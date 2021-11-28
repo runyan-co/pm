@@ -8,7 +8,7 @@ class ProcessMaker
 
     public $cli;
 
-    protected static $bin = BREW_PREFIX.'/bin/pm';
+    public $bin = BREW_PREFIX.'/bin/pm';
 
     public function __construct(FileSystem $files, CommandLine $cli)
     {

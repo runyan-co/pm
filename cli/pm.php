@@ -11,6 +11,8 @@ if (file_exists(__DIR__.'/../vendor/autoload.php')) {
 
 use Silly\Application;
 use Illuminate\Container\Container;
+use Illuminate\Support\Collection;
+
 use function ProcessMaker\Cli\table;
 use function ProcessMaker\Cli\info;
 
@@ -18,12 +20,56 @@ Container::setInstance(new Container);
 
 $app = new Application('ProcessMaker CLI Tool', '0.5.0');
 
+$app->command('test', function () {
+
+	$for_41_develop = false;
+
+	$git_branch = $for_41_develop
+		? '4.1-develop'
+		: "$(git symbolic-ref refs/remotes/origin/HEAD | sed 's@^refs/remotes/origin/@@)";
+
+	$package_commands = [
+        'git reset --hard',
+        "git checkout $git_branch",
+        'git fetch --all',
+        'git pull --force',
+    ];
+
+	$result = [];
+
+	foreach (Packages::getPackages() ?? [] as $package) {
+		if (!array_key_exists($package['name'], $result)) {
+            $result[$package['name']] = [];
+		}
+
+		$package_set = &$result[$package['name']];
+
+		$package_set['version'] = Packages::getPackageVersion($package['path']);
+
+		$package_set['path'] = $package['path'];
+
+		$package_set['commands'] = array_map(function ($command) use ($package) {
+			return 'cd '.$package['path'].' && '.$command;
+		}, $package_commands);
+
+		foreach ($package_set['commands'] as $index => $command) {
+            $package_set['commands'][$index] = Packages::setGitBranchInCommandString($command);
+		}
+	}
+
+	dump($result);
+
+//	ProcessManager::buildProcessesBundleAndStart($commands);
+});
+
 $app->command('trust [--off]', function ($off) {
 	if ($off) {
+        ProcessMaker::unlinkFromUsersBin();
         ProcessMaker::removeSudoersEntry();
 
         return info('ProcessMaker CLI tool removed sudoers file.');
 	} else {
+		ProcessMaker::symlinkToUsersBin();
         ProcessMaker::createSudoersEntry();
 
         info('ProcessMaker CLI tool added to sudoers file.');

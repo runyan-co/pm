@@ -2,13 +2,41 @@
 
 namespace ProcessMaker\Cli;
 
-use Symfony\Component\Process\Process;
+use LogicException;
 use Symfony\Component\Console\Helper\ProgressBar;
 use Symfony\Component\Console\Output\ConsoleOutput;
+use Symfony\Component\Process\Process;
+use Illuminate\Support\Collection;
 
 class CommandLine
 {
-    private $progress, $output;
+    private $progress;
+
+    private $timing;
+
+    private $queue;
+
+    private $commands;
+
+    private $output;
+
+    private $max = 5;
+
+    public function __construct()
+    {
+        $this->timing = microtime(true);
+    }
+
+    /**
+     * Returns the timing (in seconds) since the
+     * CommandLine class was instantiated
+     *
+     * @return string
+     */
+    public function timing(): string
+    {
+        return round(abs($this->timing - microtime(true)), 2) . ' seconds';
+    }
 
     /**
      * Simple global function to run commands.
@@ -131,20 +159,6 @@ class CommandLine
     }
 
     /**
-     * Get the console output for this instance
-     *
-     * @return \Symfony\Component\Console\Output\ConsoleOutput
-     */
-    public function getOutput(): ConsoleOutput
-    {
-        if (!$this->output instanceof ConsoleOutput) {
-            $this->output = new ConsoleOutput();
-        }
-
-        return $this->output;
-    }
-
-    /**
      * Start a given Process and bind the output to this instance
      *
      * @param  \Symfony\Component\Process\Process  $process
@@ -160,50 +174,96 @@ class CommandLine
         });
     }
 
+    public function getOutput()
+    {
+        if ($this->output instanceof ConsoleOutput) {
+            return $this->output;
+        }
+
+        $this->output = new ConsoleOutput();
+
+        return $this->output;
+    }
+
+    private function setProcessQueue(array $commands, int $max)
+    {
+        $this->commands = collect($commands)->reject(function ($command) {
+            return ! is_string($command);
+        });
+
+        $this->max = min(abs($max), $this->commands->count());
+
+        $this->queue = $this->commands->shift($this->max)->map(function ($command) {
+            return Process::fromShellCommandline($command);
+        });
+    }
+
+    private function getProcessQueue(): Collection
+    {
+        if (! $this->queue instanceof Collection) {
+            throw new LogicException('Process queue not found');
+        }
+
+        if (! $this->commands instanceof Collection) {
+            throw new LogicException('Commands to for Process queue not found');
+        }
+
+        return $this->queue;
+    }
+
     /**
      * Run multiple Processes in parallel
      *
-     * @param  array  $processes
-     * @param  int $maxParallel
+     * @param  array  $commands
+     * @param  int  $maxParallel
      * @param  int  $poll
      */
-    public function runParallel(array $processes, int $maxParallel, int $poll = 250)
+    public function runParallel(array $commands, int $maxParallel = 5, int $poll = 1000)
     {
-        // do not modify the object pointers in the argument, copy to local working variable
-        $processesQueue = array_filter($processes, function ($process) {
-            return $process instanceof Process;
-        });
-
-        // fix maxParallel to be max the number of processes or positive
-        $maxParallel = min(abs($maxParallel), count($processesQueue));
-
-        // get the first stack of processes to start at the same time
-        /** @var Process[] $currentProcesses */
-        $currentProcesses = array_splice($processesQueue, 0, $maxParallel);
+        $this->setProcessQueue($commands, $maxParallel);
 
         // start the initial stack of processes
-        foreach ($currentProcesses as $process) {
+        $this->getProcessQueue()->each(function ($process) {
             $this->startProcess($process);
-        }
+        });
 
         do {
-            // wait for the given time
             usleep($poll);
 
-            // remove all finished processes from the stack
-            foreach ($currentProcesses as $index => $process) {
-                if (!$process->isRunning()) {
-                    unset($currentProcesses[$index]);
+            $this->queue = $this->queue->reject(function (Process $process) {
+                return ! $process->isRunning();
+            });
 
-                    // directly add and start new process after the previous finished
-                    if (count($processesQueue) > 0) {
-                        $nextProcess = array_shift($processesQueue);
-                        $this->startProcess($process);
-                        $currentProcesses[] = $nextProcess;
-                    }
-                }
+            if ($this->commands->isEmpty()) {
+                return;
             }
-            // continue loop while there are processes being executed or waiting for execution
-        } while (count($processesQueue) > 0 || count($currentProcesses) > 0);
+
+            $nextProcess = Process::fromShellCommandline($this->commands->shift());
+
+            $this->startProcess($nextProcess);
+
+            $this->queue->add($nextProcess);
+
+        } while ($this->queue->isNotEmpty() || $this->commands->isNotEmpty());
+
+//        do {
+//            // wait for the given time
+//            usleep($poll);
+//
+//            // remove all finished processes from the stack
+//            foreach ($currentProcesses as $index => $process) {
+//                if (!$process->isRunning()) {
+//                    unset($currentProcesses[$index]);
+//
+//                    // directly add and start new process after the previous finished
+//                    if (count($processesQueue) > 0) {
+//                        $nextProcess = array_shift($processesQueue);
+//                        $this->startProcess($process);
+//                        $currentProcesses[] = $nextProcess;
+//                    }
+//                }
+//            }
+//            // continue loop while there are processes being executed or waiting for execution
+//        } while (count($processesQueue) > 0 || count($currentProcesses) > 0);
     }
 }

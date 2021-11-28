@@ -168,8 +168,7 @@ class Packages
         $current_count = 0;
 
         // Progress bar makes it easier to keep track of
-        $this->cli->getProgress($commands_count)
-                  ->start();
+        $this->cli->getProgress($commands_count)->start();
 
         // Keep track of exceptions/errors when running commands
         $errors = [];
@@ -221,8 +220,7 @@ class Packages
                     array_push($errors[$package], [$code => $output]);
                 });
 
-                $this->cli->getProgress()
-                          ->advance();
+                $this->cli->getProgress()->advance();
             }
 
             $updated_to_version = $this->getPackageVersion($package_directory);
@@ -248,5 +246,32 @@ class Packages
         output(PHP_EOL);
 
         return $results;
+    }
+
+    /**
+     * @param  string  $command
+     * @param  bool  $for_41_develop
+     *
+     * @return string
+     */
+    public function setGitBranchInCommandString(string $command, bool $for_41_develop = false): string
+    {
+        if (!Str::contains($command, '{git_branch}')) {
+            return $command;
+        }
+
+        $git_branch = ! $for_41_develop
+            ? $this->cli->runAsUser("git symbolic-ref refs/remotes/origin/HEAD | sed 's@^refs/remotes/origin/@@'")
+            : '4.1-develop';
+
+        if (!is_string($git_branch)) {
+            return '';
+        }
+
+        // Remove unnecessary end of line character(s)
+        $git_branch = Str::replace(["\n", PHP_EOL], "", $git_branch);
+
+        // Replace the {git_branch} variable with the actual branch name
+        return Str::replace('{git_branch}', $git_branch, $command);
     }
 }

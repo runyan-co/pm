@@ -19,7 +19,7 @@ if (!defined('BREW_PREFIX')) {
  * @return mixed
  * @throws \Illuminate\Contracts\Container\BindingResolutionException
  */
-function resolve($class)
+function resolve(string $class)
 {
     return Container::getInstance()->make($class);
 }
@@ -29,9 +29,10 @@ function resolve($class)
  *
  * @param  string  $class
  * @param  mixed  $instance
+ *
  * @return void
  */
-function swap($class, $instance)
+function swap(string $class, $instance)
 {
     Container::getInstance()->instance($class, $instance);
 }

@@ -35,3 +35,4 @@ class CommandLine extends Facade {}
 class FileSystem extends Facade {}
 class Packages extends Facade {}
 class ProcessMaker extends Facade {}
+class ProcessManager extends Facade {}
