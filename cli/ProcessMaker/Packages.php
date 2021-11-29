@@ -221,32 +221,6 @@ class Packages
 
         // Build the process queue and run
         $processManager->buildProcessesBundleAndStart($commands);
-
-//        $result = [];
-//
-//        $packages = $this->getPackages();
-//
-//        foreach ($packages ?? [] as $package) {
-//
-//            if (!array_key_exists($package['name'], $result)) {
-//                $result[$package['name']] = [];
-//            }
-//
-//            $package_set = &$result[$package['name']];
-//            $package_set['version'] = Packages::getPackageVersion($package['path']);
-//            $package_set['path'] = $package['path'];
-//            $package_set['branch'] = Packages::getCurrentGitBranchName($package['path']);
-//
-//            $package_set['commands'] = array_map(function ($command) use ($package) {
-//                return 'cd '.$package['path'].' && sudo -u '.user().' '.$command;
-//            }, $package_commands);
-//        }
-//
-//        $commands = collect($result)->transform(function (array $set) {
-//            return $set['commands'];
-//        })->toArray();
-
-
     }
 
     public function outputPullResults(array $metadata)
