@@ -2,14 +2,32 @@
 
 namespace ProcessMaker\Cli;
 
-use Exception;
 use LogicException;
 use React\ChildProcess\Process;
 use Illuminate\Support\Collection;
-use Symfony\Component\Console\Output\ConsoleOutput;
 
 class ProcessManager
 {
+    private $processCollections;
+
+    /**
+     * @param  string  $key
+     *
+     * @return Collection
+     */
+    protected function getProcessCollections(string $key): Collection
+    {
+        if (!$this->processCollections instanceof Collection) {
+            $this->processCollections = new Collection();
+        }
+
+        if (!$this->processCollections->get($key) instanceof Collection) {
+            $this->processCollections->put($key, new Collection());
+        }
+
+        return $this->processCollections->get($key);
+    }
+
     /**
      * @param  array  $commands
      */
@@ -44,7 +62,6 @@ class ProcessManager
 
     /**
      * @param  \Illuminate\Support\Collection  $bundles
-     * @param  callable|null  $onExit
      *
      * @return \Illuminate\Support\Collection
      */
@@ -55,10 +72,17 @@ class ProcessManager
         $bundles->each(function (Collection $bundle) {
             return $bundle->transform(function (Process $process, $index) use (&$bundle) {
 
-                // Number of processes in this bundle
-                $process_count = $bundle->count();
+                $process->on('exit', function ($exitCode, $termSignal) use (&$bundle, $process, $index) {
 
-                $process->on('exit', function ($exitCode, $termSignal) use (&$bundle, $process, $index, $process_count) {
+                    // Add to the "exited" process collection
+                    $this->getProcessCollections('exited')->push($process);
+
+                    // Add to the process collections
+                    if ($exitCode === 0) {
+                        $this->getProcessCollections('successful')->push($process);
+                    } else {
+                        $this->getProcessCollections('errors')->push($process);
+                    }
 
                     // Get the command run
                     $command = $process->getCommand();
@@ -70,13 +94,23 @@ class ProcessManager
                         warning("Process ($process->index): Failed running \"$command\"");
                     }
 
-                    // Get the next process index (if one exists)
-                    $next_process_index = $index + 1;
+                    $next_process = $bundle->get($index + 1);
 
-                    // Check to make sure there's another process left
-                    // in the bundle to start, if so, start it
-                    if ($next_process_index !== $process_count) {
-                        $this->startProcessAndPipeOutput($bundle->get($next_process_index));
+                    if ($next_process instanceof Process) {
+                        $this->startProcessAndPipeOutput($next_process);
+                    }
+
+                    $queued = $this->getProcessCollections('queued')->count();
+                    $exited = $this->getProcessCollections('exited')->count();
+
+                    if ($queued === $exited) {
+                        dump([
+                            'queued' => $queued,
+                            'started' => $this->getProcessCollections('started')->count(),
+                            'successful' => $this->getProcessCollections('successful')->count(),
+                            'errors' => $this->getProcessCollections('errors')->count(),
+                            'exited' => $exited,
+                        ]);
                     }
                 });
 
@@ -153,6 +187,9 @@ class ProcessManager
         $bundles->each(function ($bundle) use (&$index) {
             $bundle->transform(function (Process $process) use (&$index) {
                 $process->index = $index++;
+
+                $this->getProcessCollections('queued')->push($process);
+
                 return $process;
             });
         });
@@ -171,12 +208,6 @@ class ProcessManager
 
         $process->start();
 
-//        $process->stdout->on('error', function (Exception $exception) {
-//            echo "Process failed with exception message: ".$exception->getMessage();
-//        });
-
-//        $process->stdout->on('data', function ($chunk) {
-//            (new ConsoleOutput())->writeln($chunk);
-//        });
+        $this->getProcessCollections('started')->push($process);
     }
 }

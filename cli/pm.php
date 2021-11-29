@@ -11,8 +11,8 @@ if (file_exists(__DIR__.'/../vendor/autoload.php')) {
 
 use Silly\Application;
 use Illuminate\Container\Container;
-use Illuminate\Support\Collection;
-
+use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Output\OutputInterface;
 use function ProcessMaker\Cli\table;
 use function ProcessMaker\Cli\info;
 
@@ -20,44 +20,16 @@ Container::setInstance(new Container);
 
 $app = new Application('ProcessMaker CLI Tool', '0.5.0');
 
-$app->command('test', function () {
+$app->command('pull [-4|--for_41_develop]', function (InputInterface $input, OutputInterface $output) {
 
-	$for_41_develop = false;
+    // Updates to 4.1-branch of packages (or not)
+    $for_41_develop = $input->getOption('for_41_develop');
 
-	$git_branch = $for_41_develop
-		? '4.1-develop'
-		: "$(git symbolic-ref refs/remotes/origin/HEAD | sed 's@^refs/remotes/origin/@@')";
+	// Set verbosity level of output
+    $verbose = $input->getOption('verbose');
 
-	$package_commands = [
-        'git reset --hard',
-        "git checkout $git_branch",
-        'git fetch --all',
-        'git pull --force',
-    ];
-
-	$result = [];
-
-	foreach (Packages::getPackages() ?? [] as $package) {
-		if (!array_key_exists($package['name'], $result)) {
-            $result[$package['name']] = [];
-		}
-
-		$package_set = &$result[$package['name']];
-
-		$package_set['version'] = Packages::getPackageVersion($package['path']);
-
-		$package_set['path'] = $package['path'];
-
-		$package_set['commands'] = array_map(function ($command) use ($package) {
-			return 'cd '.$package['path'].' && '.$command;
-		}, $package_commands);
-	}
-
-	$commands = collect($result)->transform(function (array $set) {
-		return $set['commands'];
-	})->toArray();
-
-	ProcessManager::buildProcessesBundleAndStart($commands);
+	// Put everything together and run it
+	Packages::pull($for_41_develop, $verbose);
 });
 
 $app->command('trust [--off]', function ($off) {
@@ -66,12 +38,13 @@ $app->command('trust [--off]', function ($off) {
         ProcessMaker::removeSudoersEntry();
 
         return info('ProcessMaker CLI tool removed sudoers file.');
-	} else {
-		ProcessMaker::symlinkToUsersBin();
-        ProcessMaker::createSudoersEntry();
-
-        info('ProcessMaker CLI tool added to sudoers file.');
 	}
+
+    ProcessMaker::symlinkToUsersBin();
+    ProcessMaker::createSudoersEntry();
+
+    info('ProcessMaker CLI tool added to sudoers file.');
+
 })->descriptions('Adds the pm cli tool to the sudoers file.');
 
 $app->command('pull-packages [-4|--for_41_develop] [-d|--directory]',

@@ -2,25 +2,16 @@
 
 namespace ProcessMaker\Cli;
 
-use LogicException;
+use Exception;
+use React\ChildProcess\Process;
 use Symfony\Component\Console\Helper\ProgressBar;
 use Symfony\Component\Console\Output\ConsoleOutput;
-use Symfony\Component\Process\Process;
-use Illuminate\Support\Collection;
 
 class CommandLine
 {
     private $progress;
 
     private $timing;
-
-    private $queue;
-
-    private $commands;
-
-    private $output;
-
-    private $max = 5;
 
     public function __construct()
     {
@@ -136,134 +127,26 @@ class CommandLine
      *
      * @return string
      */
-    function runCommand(string $command, callable $onError = null)
+    function runCommand(string $command, callable $onError = null): string
     {
-        $onError = $onError ? : function () {};
+        $onError = $onError ?: function (Exception $exception) {
+            warning($exception->getMessage());
+        };
 
-        if (method_exists(Process::class, 'fromShellCommandline')) {
-            $process = Process::fromShellCommandline($command);
-        } else {
-            $process = new Process($command);
-        }
+        $process_output = '';
 
-        $processOutput = '';
-        $process->setTimeout(null)->run(function ($type, $line) use (&$processOutput) {
-            $processOutput .= $line;
+        $process = new Process($command);
+
+        $process->start();
+
+        $process->stdout->on('error', function (Exception $exception) use ($onError) {
+            $onError($exception->getMessage());
         });
 
-        if ($process->getExitCode() > 0) {
-            $onError($process->getExitCode(), $processOutput);
-        }
-
-        return $processOutput;
-    }
-
-    /**
-     * Start a given Process and bind the output to this instance
-     *
-     * @param  \Symfony\Component\Process\Process  $process
-     */
-    private function startProcess(Process $process)
-    {
-        if ($process->isRunning()) {
-            return;
-        }
-
-        $process->start(function ($type, $line) {
-            $this->getOutput()->writeln($line);
-        });
-    }
-
-    public function getOutput()
-    {
-        if ($this->output instanceof ConsoleOutput) {
-            return $this->output;
-        }
-
-        $this->output = new ConsoleOutput();
-
-        return $this->output;
-    }
-
-    private function setProcessQueue(array $commands, int $max)
-    {
-        $this->commands = collect($commands)->reject(function ($command) {
-            return ! is_string($command);
+        $process->stdout->on('data', function ($chunk) use (&$process_output) {
+            $process_output .= $chunk;
         });
 
-        $this->max = min(abs($max), $this->commands->count());
-
-        $this->queue = $this->commands->shift($this->max)->map(function ($command) {
-            return Process::fromShellCommandline($command);
-        });
-    }
-
-    private function getProcessQueue(): Collection
-    {
-        if (! $this->queue instanceof Collection) {
-            throw new LogicException('Process queue not found');
-        }
-
-        if (! $this->commands instanceof Collection) {
-            throw new LogicException('Commands to for Process queue not found');
-        }
-
-        return $this->queue;
-    }
-
-    /**
-     * Run multiple Processes in parallel
-     *
-     * @param  array  $commands
-     * @param  int  $maxParallel
-     * @param  int  $poll
-     */
-    public function runParallel(array $commands, int $maxParallel = 5, int $poll = 1000)
-    {
-        $this->setProcessQueue($commands, $maxParallel);
-
-        // start the initial stack of processes
-        $this->getProcessQueue()->each(function ($process) {
-            $this->startProcess($process);
-        });
-
-        do {
-            usleep($poll);
-
-            $this->queue = $this->queue->reject(function (Process $process) {
-                return ! $process->isRunning();
-            });
-
-            if ($this->commands->isEmpty()) {
-                return;
-            }
-
-            $nextProcess = Process::fromShellCommandline($this->commands->shift());
-
-            $this->startProcess($nextProcess);
-
-            $this->queue->add($nextProcess);
-
-        } while ($this->queue->isNotEmpty() || $this->commands->isNotEmpty());
-
-//        do {
-//            // wait for the given time
-//            usleep($poll);
-//
-//            // remove all finished processes from the stack
-//            foreach ($currentProcesses as $index => $process) {
-//                if (!$process->isRunning()) {
-//                    unset($currentProcesses[$index]);
-//
-//                    // directly add and start new process after the previous finished
-//                    if (count($processesQueue) > 0) {
-//                        $nextProcess = array_shift($processesQueue);
-//                        $this->startProcess($process);
-//                        $currentProcesses[] = $nextProcess;
-//                    }
-//                }
-//            }
-//            // continue loop while there are processes being executed or waiting for execution
-//        } while (count($processesQueue) > 0 || count($currentProcesses) > 0);
+        return $process_output;
     }
 }

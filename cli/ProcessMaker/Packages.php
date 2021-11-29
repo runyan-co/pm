@@ -103,7 +103,7 @@ class Packages
     {
         $composer_json = $this->getComposerJson($package_directory);
 
-        if (!property_exists($composer_json, 'version')) {
+        if (!property_exists($composer_json ?? new class {}, 'version')) {
             return '...';
         }
 
@@ -130,6 +130,46 @@ class Packages
 
         // Remove unnecessary end of line character(s)
         return Str::replace(["\n", PHP_EOL], "", $git_branch);
+    }
+
+    public function pull(bool $for_41_develop = false, bool $verbose = false)
+    {
+        $git_branch = $for_41_develop
+            ? '4.1-develop'
+            : "$(git symbolic-ref refs/remotes/origin/HEAD | sed 's@^refs/remotes/origin/@@')";
+
+        $package_commands = [
+            'git reset --hard',
+            "git checkout $git_branch",
+            'git fetch --all',
+            'git pull --force',
+        ];
+
+        $result = [];
+
+        foreach ($this->getPackages() ?? [] as $package) {
+
+            if (!array_key_exists($package['name'], $result)) {
+                $result[$package['name']] = [];
+            }
+
+            $package_set = &$result[$package['name']];
+
+            $package_set['version'] = Packages::getPackageVersion($package['path']);
+
+            $package_set['path'] = $package['path'];
+
+            $package_set['commands'] = array_map(function ($command) use ($package) {
+                return 'cd '.$package['path'].' && '.$command;
+            }, $package_commands);
+        }
+
+        $commands = collect($result)->transform(function (array $set) {
+            return $set['commands'];
+        })->toArray();
+
+        $processManager = new ProcessManager();
+        $processManager->buildProcessesBundleAndStart($commands);
     }
 
     /**
@@ -216,9 +256,11 @@ class Packages
                     $command = Str::replace('{git_branch}', $this->getDefaultGitBranch($for_41_develop), $command);
                 }
 
-                $this->cli->runAsUser($command, function ($code, $output) use (&$errors, $package) {
-                    array_push($errors[$package], [$code => $output]);
+                $output = $this->cli->runAsUser($command, function ($message) use (&$errors, $package) {
+                    array_push($errors[$package], $message);
                 });
+
+                output($output);
 
                 $this->cli->getProgress()->advance();
             }

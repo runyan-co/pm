@@ -18,8 +18,9 @@
         "illuminate/support": "^8.73",
         "illuminate/container": "^8.73",
         "mnapoli/silly": "^1.7",
+        "react/child-process": "^0.6.4",
         "symfony/process": "^5.3",
-        "react/child-process": "^0.6.4"
+        "symfony/console": "^5.3"
     },
     "require-dev": {
         "beyondcode/laravel-dump-server": "^1.7"
