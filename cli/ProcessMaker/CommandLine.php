@@ -78,6 +78,9 @@ class CommandLine
     {
         $this->progress = new ProgressBar(new ConsoleOutput(), $count);
 
+        ProgressBar::setFormatDefinition('minimal', 'Progress: %percent%%');
+
+        $this->progress->setFormat('minimal');
         $this->progress->setRedrawFrequency(25);
         $this->progress->minSecondsBetweenRedraws(0.025);
         $this->progress->maxSecondsBetweenRedraws(0.05);

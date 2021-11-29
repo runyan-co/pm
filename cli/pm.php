@@ -16,24 +16,10 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use function ProcessMaker\Cli\table;
 use function ProcessMaker\Cli\info;
-use function ProcessMaker\Cli\warning;
 
 Container::setInstance(new Container);
 
 $app = new Application('ProcessMaker CLI Tool', '0.5.0');
-
-$app->command('find name', function ($name) {
-    $package = Packages::findComposerPackageLocally($name);
-
-	if (blank($package)) {
-        return warning("Package with name \"$name\" not found locally.");
-	}
-
-    $path = $package['path'];
-    $name = $package['name'];
-
-    info("Package \"$name\" found at \"$path\"");
-});
 
 $app->command('pull [-4|--for_41_develop]', function (InputInterface $input, OutputInterface $output) {
 
@@ -44,7 +30,7 @@ $app->command('pull [-4|--for_41_develop]', function (InputInterface $input, Out
     $verbose = $input->getOption('verbose');
 
 	// Put everything together and run it
-	Packages::pull($for_41_develop, $verbose);
+	$for_41_develop ? Packages::pull41($verbose) : Packages::pull($verbose);
 });
 
 $app->command('trust [--off]', function ($off) {

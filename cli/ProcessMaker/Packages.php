@@ -2,6 +2,7 @@
 
 namespace ProcessMaker\Cli;
 
+use Closure;
 use RuntimeException;
 use Illuminate\Support\Str;
 
@@ -115,22 +116,6 @@ class Packages
     }
 
     /**
-     * Returns the name and absolute path to the local composer package directory
-     *
-     * @param  string  $name
-     *
-     * @return array
-     */
-    public function findComposerPackageLocally(string $name): array
-    {
-        if (Str::contains($name, 'processmaker/')) {
-            $name = Str::replace('processmaker/', '', $name);
-        }
-
-        return collect($this->getPackages())->keyBy('name')->get($name) ?? [];
-    }
-
-    /**
      * @param  string  $path
      *
      * @return string
@@ -149,86 +134,165 @@ class Packages
     }
 
     /**
-     * @param  bool  $for_41_develop
      * @param  bool  $verbose
      */
-    public function pull(bool $for_41_develop = false, bool $verbose = false)
+    public function pull41(bool $verbose = false)
     {
-        $git_branch = $for_41_develop
-            ? '4.1-develop'
-            : "$(git symbolic-ref refs/remotes/origin/HEAD | sed 's@^refs/remotes/origin/@@')";
+        $this->pull($verbose, '4.1-develop');
+    }
 
-        $package_commands = [
-            'git reset --hard',
-            'git clean -d  -f .',
-            "git checkout $git_branch",
-            'git fetch --all',
-            'git pull --force',
-        ];
+    /**
+     * Stores basic package metadata on this class instance. Used to store metadata
+     * prior to running the pull() method for comparisons afterwards.
+     *
+     * @param  bool  $updated
+     * @param  array  $metadata  Any package metadata to start with
+     *
+     * @return array
+     */
+    public function takePackagesSnapshot(bool $updated = false, array $metadata = []): array
+    {
+        foreach (Packages::getPackages() as $package) {
 
-        $result = [];
+            $version_key = $updated ? 'updated_version' : 'version';
+            $branch_key = $updated ? 'updated_branch' : 'branch';
 
-        $packages = $this->getPackages();
+            $metadata[$package['name']] = [
+                'name' => $package['name'],
+                $version_key => Packages::getPackageVersion($package['path']),
+                $branch_key => Packages::getCurrentGitBranchName($package['path'])
+            ];
+        }
 
-        foreach ($packages ?? [] as $package) {
+        return $metadata;
+    }
 
-            if (!array_key_exists($package['name'], $result)) {
-                $result[$package['name']] = [];
-            }
+    /**
+     * @param  string  $branch
+     * @param  array  $commands
+     *
+     * @return array
+     */
+    public function buildPullCommands(string $branch, array $commands = []): array
+    {
+        foreach (Packages::getPackages() as $package) {
+            $package_commands = [
+                'git reset --hard',
+                'git clean -d -f .',
+                "git checkout $branch",
+                'git fetch --all',
+                'git pull --force',
+            ];
 
-            $package_set = &$result[$package['name']];
-            $package_set['version'] = Packages::getPackageVersion($package['path']);
-            $package_set['path'] = $package['path'];
-            $package_set['branch'] = Packages::getCurrentGitBranchName($package['path']);
-
-            $package_set['commands'] = array_map(function ($command) use ($package) {
+            $commands[$package['name']] = array_map(function ($command) use ($package) {
                 return 'cd '.$package['path'].' && sudo -u '.user().' '.$command;
             }, $package_commands);
         }
 
-        $commands = collect($result)->transform(function (array $set) {
-            return $set['commands'];
-        })->toArray();
+        return $commands;
+    }
+
+    /**
+     * @param  bool  $verbose
+     * @param  string|null  $branch
+     */
+    public function pull(bool $verbose = false, string $branch = null): void
+    {
+        // A quick command (thanks Nolan!) to grab the default branch
+        $get_default_git_branch = "$(git symbolic-ref refs/remotes/origin/HEAD | sed 's@^refs/remotes/origin/@@')";
+
+        // Build the commands for each package (keyed by package name)
+        $commands = Packages::buildPullCommands($branch ?? $get_default_git_branch);
+
+        // Store the pre-pull metadata for each package
+        $metadata = Packages::takePackagesSnapshot();
 
         // Create a new ProcessManager instance to run the
         // git commands in parallel where possible
-        $processManager = new ProcessManager(new CommandLine);
+        $processManager = new ProcessManager($this->cli);
 
         // Set verbosity for output to stdout
         $processManager->setVerbosity($verbose);
 
         // Set a closure to be called when the final process exits
-        $processManager->setFinalCallback(function () use ($result) {
-
-            $final_result = [];
-
-            foreach ($this->getPackages() ?? [] as $package) {
-
-                $package_set = $result[$package['name']];
-                $final_result[$package['name']] = [];
-                $symbol = &$final_result[$package['name']];
-
-                $symbol['name'] = '<fg=cyan>'.$package['name'].'</>';
-                $symbol['version'] = $package_set['version'];
-                $symbol['updated_version'] = Packages::getPackageVersion($package['path']);
-
-                if ($symbol['updated_version'] !== $symbol['version']) {
-                    $symbol['updated_version'] = '<info>'.$symbol['updated_version'].'</info>';
-                }
-
-                $symbol['branch'] = $package_set['branch'];
-                $symbol['updated_branch'] = Packages::getCurrentGitBranchName($package['path']);
-
-                if ($symbol['updated_branch'] !== $symbol['branch']) {
-                    $symbol['updated_branch'] = '<info>'.$symbol['updated_branch'].'</info>';
-                }
-            }
-
-            $table = collect($final_result)->sortBy('name')->values()->toArray();
-
-            table(['Name', 'Version', 'Updated Version', 'Branch', 'Updated Branch'], $table);
+        $processManager->setFinalCallback(function () use ($metadata) {
+            Packages::outputPullResults($metadata);
         });
 
+        // Build the process queue and run
         $processManager->buildProcessesBundleAndStart($commands);
+
+//        $result = [];
+//
+//        $packages = $this->getPackages();
+//
+//        foreach ($packages ?? [] as $package) {
+//
+//            if (!array_key_exists($package['name'], $result)) {
+//                $result[$package['name']] = [];
+//            }
+//
+//            $package_set = &$result[$package['name']];
+//            $package_set['version'] = Packages::getPackageVersion($package['path']);
+//            $package_set['path'] = $package['path'];
+//            $package_set['branch'] = Packages::getCurrentGitBranchName($package['path']);
+//
+//            $package_set['commands'] = array_map(function ($command) use ($package) {
+//                return 'cd '.$package['path'].' && sudo -u '.user().' '.$command;
+//            }, $package_commands);
+//        }
+//
+//        $commands = collect($result)->transform(function (array $set) {
+//            return $set['commands'];
+//        })->toArray();
+
+
+    }
+
+    public function outputPullResults(array $metadata)
+    {
+        $table = [];
+
+        // Build the table rows
+        foreach (Packages::takePackagesSnapshot(true) as $package => $updated) {
+            $table[$package] = array_merge($metadata[$package], $updated);
+        }
+
+        // Sort the columns in a more sensible way
+        foreach ($table as $key => $row) {
+            $table[$key] = [
+                'name' => $row['name'],
+                'version' => $row['version'],
+                'updated_version' => $row['updated_version'],
+                'branch' => $row['branch'],
+                'updated_branch' => $row['updated_branch']
+            ];
+        }
+
+        // Add console styling
+        foreach ($table as $key => $row) {
+
+            // Highlight the package name
+            $table[$key]['name'] = '<fg=cyan>'.$row['name'].'</>';
+
+            // If the versions are the same, no updated occurred.
+            // If they are different, let's make it easier to see.
+            if ($row['version'] !== $row['updated_version']) {
+                $table[$key]['updated_version'] = '<info>'.$row['updated_version'].'</info>';
+            }
+
+            // Do the same thing with branches, since we may
+            // have switch to 4.1 or 4.1 during the pull, which
+            // is set by the user by adding a flag to the command
+            if ($row['branch'] !== $row['updated_branch']) {
+                $table[$key]['updated_branch'] = '<info>'.$row['updated_branch'].'</info>';
+            }
+        }
+
+        // Add a new line for space above the table
+        output(PHP_EOL);
+
+        // Format our results in an easy-to-ready table
+        table(['Name', 'Version', 'Updated Version', 'Branch', 'Updated Branch'], $table);
     }
 }

@@ -8,13 +8,9 @@ use Illuminate\Support\Collection;
 
 class ProcessManager
 {
-    private $processCollections;
+    private $processCollections, $finalCallback, $cli;
 
     private $verbose = false;
-
-    private $cli;
-
-    public $finalCallback;
 
     public function __construct(CommandLine $cli)
     {
@@ -175,7 +171,7 @@ class ProcessManager
             throw new LogicException('No bundles of Processes found');
         }
 
-        info($this->countProcessesInBundles($bundles)." processes to run...");
+        $this->setProcessIndexes($bundles);
 
         $this->getStartProcesses($bundles)->each(function (Process $process) {
             $this->startProcessAndPipeOutput($process);
@@ -199,9 +195,9 @@ class ProcessManager
     /**
      * @param  \Illuminate\Support\Collection  $bundles
      *
-     * @return int
+     * @return void
      */
-    private function countProcessesInBundles(Collection $bundles): int
+    private function setProcessIndexes(Collection $bundles): void
     {
         $index = 0;
         $total_processes = 0;
@@ -224,8 +220,6 @@ class ProcessManager
         });
 
         $this->cli->getProgress($total_processes);
-
-        return $total_processes;
     }
 
     /**
