@@ -2,15 +2,12 @@
 
 namespace ProcessMaker\Cli;
 
+use RuntimeException;
 use Illuminate\Support\Str;
 
 class Packages
 {
-    public $cli;
-
-    public $files;
-
-    public $package_directory;
+    public $cli, $files, $package_directory;
 
     public function __construct(CommandLine $cli, FileSystem $files)
     {
@@ -49,7 +46,14 @@ class Packages
             $package_directory = $this->package_directory;
         }
 
-        return $this->files->scandir($package_directory);
+        return array_filter($this->files->scandir($package_directory), function ($dir) {
+
+            // Set the absolute path to the file or directory
+            $dir = $this->package_directory.'/'.$dir;
+
+            // Filter out any non-directory files
+            return $this->files->isDir($dir) && !is_file($dir);
+        });
     }
 
     /**
@@ -76,7 +80,7 @@ class Packages
     public function getComposerJson(string $path_to_composer_json)
     {
         if (!$this->files->isDir($path_to_composer_json)) {
-            return warning("Path not found: $path_to_composer_json");
+            throw new RuntimeException("Path to composer.json not found: $path_to_composer_json");
         }
 
         if (Str::endsWith($path_to_composer_json, '/')) {
@@ -86,7 +90,7 @@ class Packages
         $composer_json_file = "$path_to_composer_json/composer.json";
 
         if (!$this->files->exists($composer_json_file)) {
-            return warning("Composer.json not found: $composer_json_file");
+            throw new RuntimeException("Composer.json not found: $composer_json_file");
         }
 
         return json_decode($this->files->get($composer_json_file));
@@ -111,25 +115,19 @@ class Packages
     }
 
     /**
-     * Get the default branch name for the Git repo in
-     * the current PHP working directory
+     * Returns the name and absolute path to the local composer package directory
      *
-     * @param  bool  $for_41_develop
+     * @param  string  $name
      *
-     * @return string
+     * @return array
      */
-    public function getDefaultGitBranch(bool $for_41_develop = false): string
+    public function findComposerPackageLocally(string $name): array
     {
-        $git_branch = ! $for_41_develop
-            ? $this->cli->runAsUser("git symbolic-ref refs/remotes/origin/HEAD | sed 's@^refs/remotes/origin/@@'")
-            : '4.1-develop';
-
-        if (!is_string($git_branch)) {
-            return '';
+        if (Str::contains($name, 'processmaker/')) {
+            $name = Str::replace('processmaker/', '', $name);
         }
 
-        // Remove unnecessary end of line character(s)
-        return Str::replace(["\n", PHP_EOL], "", $git_branch);
+        return collect($this->getPackages())->keyBy('name')->get($name) ?? [];
     }
 
     /**
@@ -139,12 +137,21 @@ class Packages
      */
     public function getCurrentGitBranchName(string $path): string
     {
-        $branch = $this->cli->runAsUser("cd $path && echo $(git rev-parse --abbrev-ref HEAD)");
+        if (!$this->files->isDir($path)) {
+            return '...';
+        }
+
+        // Run this command and get the current git branch
+        $branch = $this->cli->runAsUser('git rev-parse --abbrev-ref HEAD', null, $path);
 
         // Remove unnecessary end of line character(s)
         return Str::replace(["\n", PHP_EOL], "", $branch);
     }
 
+    /**
+     * @param  bool  $for_41_develop
+     * @param  bool  $verbose
+     */
     public function pull(bool $for_41_develop = false, bool $verbose = false)
     {
         $git_branch = $for_41_develop
@@ -153,6 +160,7 @@ class Packages
 
         $package_commands = [
             'git reset --hard',
+            'git clean -d  -f .',
             "git checkout $git_branch",
             'git fetch --all',
             'git pull --force',
@@ -169,13 +177,12 @@ class Packages
             }
 
             $package_set = &$result[$package['name']];
-
             $package_set['version'] = Packages::getPackageVersion($package['path']);
-
             $package_set['path'] = $package['path'];
+            $package_set['branch'] = Packages::getCurrentGitBranchName($package['path']);
 
             $package_set['commands'] = array_map(function ($command) use ($package) {
-                return 'sudo -u '.user().' cd '.$package['path'].' && '.$command;
+                return 'cd '.$package['path'].' && sudo -u '.user().' '.$command;
             }, $package_commands);
         }
 
@@ -185,168 +192,43 @@ class Packages
 
         // Create a new ProcessManager instance to run the
         // git commands in parallel where possible
-        $processManager = new ProcessManager($this->cli);
+        $processManager = new ProcessManager(new CommandLine);
 
-        $processManager->setFinalCallback(function () use (&$result) {
+        // Set verbosity for output to stdout
+        $processManager->setVerbosity($verbose);
+
+        // Set a closure to be called when the final process exits
+        $processManager->setFinalCallback(function () use ($result) {
+
+            $final_result = [];
+
             foreach ($this->getPackages() ?? [] as $package) {
 
-                $package_set = &$result[$package['name']];
-                $package_set['updated_version'] = $this->getPackageVersion($package['path']);
-                $package_set['branch'] = $this->getCurrentGitBranchName($package['path']);
+                $package_set = $result[$package['name']];
+                $final_result[$package['name']] = [];
+                $symbol = &$final_result[$package['name']];
 
-                unset($package_set['path']);
-                unset($package_set['commands']);
-            }
+                $symbol['name'] = '<fg=cyan>'.$package['name'].'</>';
+                $symbol['version'] = $package_set['version'];
+                $symbol['updated_version'] = Packages::getPackageVersion($package['path']);
 
-            dump($result);
-        });
-
-        $processManager->setVerbosity($verbose);
-        $processManager->buildProcessesBundleAndStart($commands);
-    }
-
-    /**
-     * Iterate through each local composer package and
-     * pull down the latest from GitHub
-     *
-     * @param  bool  $for_41_develop
-     * @param  string|null  $directory
-     *
-     * @return array
-     */
-    public function pullPackages(bool $for_41_develop = false, string $directory = null): array
-    {
-        $results = [];
-
-        if (is_string($directory)) {
-            if (!$this->setPackageDirectory($directory)) {
-                warning("Could not set packages directory: $directory");
-
-                return $results;
-            }
-        }
-
-        $packages = $this->getPackages();
-
-        // Commands to run in the package's directory
-        $commands = [
-            'git reset --hard',
-            'git checkout {git_branch}',
-            'git fetch --all',
-            'git pull --force',
-        ];
-
-        // Total number of commands to be run in sum
-        $commands_count = count($packages) * count($commands);
-        $current_count = 0;
-
-        // Progress bar makes it easier to keep track of
-        $this->cli->getProgress($commands_count)->start();
-
-        // Keep track of exceptions/errors when running commands
-        $errors = [];
-
-        // Iterate through and run necessary commands to pull down
-        // the latest and switch to the default branch for each
-        foreach($packages as $package) {
-
-            $package_directory = $package['path'];
-            $package = $package['name'];
-            $errors[$package] = [];
-
-            if (!is_dir($package_directory)) {
-                warning("Skipping since the package directory wasn't found: $package_directory");
-
-                continue;
-            }
-
-            if (!chdir($package_directory)) {
-                warning("Could not change to directory: $package_directory");
-
-                continue;
-            }
-
-            // Delete node_modules/ and vendor/ if they exist
-            if (is_dir('node_modules')) {
-                $this->files->rmdir('node_modules');
-            }
-
-            if (is_dir('vendor')) {
-                $this->files->rmdir('vendor');
-            }
-
-            // Pre-update package version
-            $current_version = $this->getPackageVersion($package_directory);
-
-            foreach ($commands as $command) {
-
-                // Current command number we're on
-                ++$current_count;
-
-                // Replace the string 'git_branch' with the actual
-                // default git_branch for this package
-                if (Str::contains($command, '{git_branch}')) {
-                    $command = Str::replace('{git_branch}', $this->getDefaultGitBranch($for_41_develop), $command);
+                if ($symbol['updated_version'] !== $symbol['version']) {
+                    $symbol['updated_version'] = '<info>'.$symbol['updated_version'].'</info>';
                 }
 
-                $output = $this->cli->runAsUser($command, function ($message) use (&$errors, $package) {
-                    array_push($errors[$package], $message);
-                });
+                $symbol['branch'] = $package_set['branch'];
+                $symbol['updated_branch'] = Packages::getCurrentGitBranchName($package['path']);
 
-                output($output);
-
-                $this->cli->getProgress()->advance();
+                if ($symbol['updated_branch'] !== $symbol['branch']) {
+                    $symbol['updated_branch'] = '<info>'.$symbol['updated_branch'].'</info>';
+                }
             }
 
-            $updated_to_version = $this->getPackageVersion($package_directory);
+            $table = collect($final_result)->sortBy('name')->values()->toArray();
 
-            if ($current_version !== $updated_to_version) {
-                $updated_to_version = "<info>$updated_to_version</info>";
-            }
+            table(['Name', 'Version', 'Updated Version', 'Branch', 'Updated Branch'], $table);
+        });
 
-            $error_count = count($errors[$package]);
-
-            $results[] = [
-                "processmaker/$package",
-                $current_version,
-                $updated_to_version,
-                $for_41_develop ? 'Yes' : 'No',
-                $error_count === 0 ? "<info>0</info>" : "<fg=red>$error_count</>"
-            ];
-        }
-
-        $this->cli->getProgress()->finish();
-
-        // Needed to separate progress bar output
-        output(PHP_EOL);
-
-        return $results;
-    }
-
-    /**
-     * @param  string  $command
-     * @param  bool  $for_41_develop
-     *
-     * @return string
-     */
-    public function setGitBranchInCommandString(string $command, bool $for_41_develop = false): string
-    {
-        if (!Str::contains($command, '{git_branch}')) {
-            return $command;
-        }
-
-        $git_branch = ! $for_41_develop
-            ? $this->cli->runAsUser("git symbolic-ref refs/remotes/origin/HEAD | sed 's@^refs/remotes/origin/@@'")
-            : '4.1-develop';
-
-        if (!is_string($git_branch)) {
-            return '';
-        }
-
-        // Remove unnecessary end of line character(s)
-        $git_branch = Str::replace(["\n", PHP_EOL], "", $git_branch);
-
-        // Replace the {git_branch} variable with the actual branch name
-        return Str::replace('{git_branch}', $git_branch, $command);
+        $processManager->buildProcessesBundleAndStart($commands);
     }
 }

@@ -17,6 +17,11 @@ class CommandLine
         $this->timing = microtime(true);
     }
 
+    public function __destruct()
+    {
+        $this->timing = $this->timing();
+    }
+
     /**
      * Returns the timing (in seconds) since the
      * CommandLine class was instantiated
@@ -97,12 +102,13 @@ class CommandLine
      *
      * @param  string  $command
      * @param  callable|null  $onError
+     * @param  string|null  $workingDir
      *
      * @return string
      */
-    function run(string $command, callable $onError = null): string
+    public function run(string $command, callable $onError = null, string $workingDir = null): string
     {
-        return $this->runCommand($command, $onError);
+        return $this->runCommand($command, $onError, $workingDir);
     }
 
     /**
@@ -110,12 +116,13 @@ class CommandLine
      *
      * @param  string  $command
      * @param  callable|null  $onError
+     * @param  string|null  $workingDir
      *
      * @return string
      */
-    function runAsUser(string $command, callable $onError = null): string
+    public function runAsUser(string $command, callable $onError = null, string $workingDir = null): string
     {
-        return $this->runCommand('sudo -u "'.user().'" '.$command, $onError);
+        return $this->runCommand('sudo -u "'.user().'" '.$command, $onError, $workingDir);
     }
 
     /**
@@ -123,10 +130,11 @@ class CommandLine
      *
      * @param  string  $command
      * @param  callable|null  $onError
+     * @param  string|null  $workingDir
      *
      * @return string
      */
-    function runCommand(string $command, callable $onError = null)
+    public function runCommand(string $command, callable $onError = null, string $workingDir = null): string
     {
         $onError = $onError ? : function () {};
 
@@ -136,7 +144,14 @@ class CommandLine
             $process = new Process($command);
         }
 
+        if ($workingDir) {
+            if (is_dir($workingDir) && !is_file($workingDir)) {
+                $process->setWorkingDirectory($workingDir);
+            }
+        }
+
         $processOutput = '';
+
         $process->setTimeout(null)->run(function ($type, $line) use (&$processOutput) {
             $processOutput .= $line;
         });

@@ -126,6 +126,7 @@ class ProcessManager
                     // All processes are finished
                     if ($queued === $exited) {
                         $this->cli->getProgress()->finish();
+
                         $this->getFinalCallback();
                     }
                 });

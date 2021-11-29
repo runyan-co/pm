@@ -10,20 +10,29 @@ if (file_exists(__DIR__.'/../vendor/autoload.php')) {
 }
 
 use Silly\Application;
+use Illuminate\Support\Str;
 use Illuminate\Container\Container;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use function ProcessMaker\Cli\table;
 use function ProcessMaker\Cli\info;
+use function ProcessMaker\Cli\warning;
 
 Container::setInstance(new Container);
 
 $app = new Application('ProcessMaker CLI Tool', '0.5.0');
 
-$app->command('test', function () {
+$app->command('find name', function ($name) {
+    $package = Packages::findComposerPackageLocally($name);
 
-	dump(Packages::getCurrentGitBranchName('/Users/alex/packages/composer/processmaker/connector-send-email'));
+	if (blank($package)) {
+        return warning("Package with name \"$name\" not found locally.");
+	}
 
+    $path = $package['path'];
+    $name = $package['name'];
+
+    info("Package \"$name\" found at \"$path\"");
 });
 
 $app->command('pull [-4|--for_41_develop]', function (InputInterface $input, OutputInterface $output) {
