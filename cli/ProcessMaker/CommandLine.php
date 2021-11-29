@@ -2,8 +2,7 @@
 
 namespace ProcessMaker\Cli;
 
-use Exception;
-use React\ChildProcess\Process;
+use Symfony\Component\Process\Process;
 use Symfony\Component\Console\Helper\ProgressBar;
 use Symfony\Component\Console\Output\ConsoleOutput;
 
@@ -127,26 +126,25 @@ class CommandLine
      *
      * @return string
      */
-    function runCommand(string $command, callable $onError = null): string
+    function runCommand(string $command, callable $onError = null)
     {
-        $onError = $onError ?: function (Exception $exception) {
-            warning($exception->getMessage());
-        };
+        $onError = $onError ? : function () {};
 
-        $process_output = '';
+        if (method_exists(Process::class, 'fromShellCommandline')) {
+            $process = Process::fromShellCommandline($command);
+        } else {
+            $process = new Process($command);
+        }
 
-        $process = new Process($command);
-
-        $process->start();
-
-        $process->stdout->on('error', function (Exception $exception) use ($onError) {
-            $onError($exception->getMessage());
+        $processOutput = '';
+        $process->setTimeout(null)->run(function ($type, $line) use (&$processOutput) {
+            $processOutput .= $line;
         });
 
-        $process->stdout->on('data', function ($chunk) use (&$process_output) {
-            $process_output .= $chunk;
-        });
+        if ($process->getExitCode() > 0) {
+            $onError($process->getExitCode(), $processOutput);
+        }
 
-        return $process_output;
+        return $processOutput;
     }
 }

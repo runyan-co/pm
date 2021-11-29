@@ -20,6 +20,12 @@ Container::setInstance(new Container);
 
 $app = new Application('ProcessMaker CLI Tool', '0.5.0');
 
+$app->command('test', function () {
+
+	dump(Packages::getCurrentGitBranchName('/Users/alex/packages/composer/processmaker/connector-send-email'));
+
+});
+
 $app->command('pull [-4|--for_41_develop]', function (InputInterface $input, OutputInterface $output) {
 
     // Updates to 4.1-branch of packages (or not)

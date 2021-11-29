@@ -10,6 +10,22 @@ class ProcessManager
 {
     private $processCollections;
 
+    private $verbose = false;
+
+    private $cli;
+
+    public $finalCallback;
+
+    public function __construct(CommandLine $cli)
+    {
+        $this->cli = $cli;
+    }
+
+    public function setVerbosity(bool $verbose)
+    {
+        $this->verbose = $verbose;
+    }
+
     /**
      * @param  string  $key
      *
@@ -74,6 +90,8 @@ class ProcessManager
 
                 $process->on('exit', function ($exitCode, $termSignal) use (&$bundle, $process, $index) {
 
+                    $this->cli->getProgress()->advance();
+
                     // Add to the "exited" process collection
                     $this->getProcessCollections('exited')->push($process);
 
@@ -88,10 +106,12 @@ class ProcessManager
                     $command = $process->getCommand();
 
                     // Return progress to stdout
-                    if ($exitCode === 0) {
-                        info("Process ($process->index): Success running \"$command\"");
-                    } else {
-                        warning("Process ($process->index): Failed running \"$command\"");
+                    if ($this->verbose) {
+                        if ($exitCode === 0) {
+                            info("Process ($process->index): Success running \"$command\"");
+                        } else {
+                            warning("Process ($process->index): Failed running \"$command\"");
+                        }
                     }
 
                     $next_process = $bundle->get($index + 1);
@@ -103,14 +123,10 @@ class ProcessManager
                     $queued = $this->getProcessCollections('queued')->count();
                     $exited = $this->getProcessCollections('exited')->count();
 
+                    // All processes are finished
                     if ($queued === $exited) {
-                        dump([
-                            'queued' => $queued,
-                            'started' => $this->getProcessCollections('started')->count(),
-                            'successful' => $this->getProcessCollections('successful')->count(),
-                            'errors' => $this->getProcessCollections('errors')->count(),
-                            'exited' => $exited,
-                        ]);
+                        $this->cli->getProgress()->finish();
+                        $this->getFinalCallback();
                     }
                 });
 
@@ -119,6 +135,18 @@ class ProcessManager
         });
 
         return $bundles;
+    }
+
+    public function getFinalCallback()
+    {
+        if (is_callable($this->finalCallback)) {
+            return call_user_func($this->finalCallback);
+        }
+    }
+
+    public function setFinalCallback(callable $callback)
+    {
+        $this->finalCallback = $callback;
     }
 
     /**
@@ -193,6 +221,8 @@ class ProcessManager
                 return $process;
             });
         });
+
+        $this->cli->getProgress($total_processes);
 
         return $total_processes;
     }

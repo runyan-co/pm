@@ -132,6 +132,19 @@ class Packages
         return Str::replace(["\n", PHP_EOL], "", $git_branch);
     }
 
+    /**
+     * @param  string  $path
+     *
+     * @return string
+     */
+    public function getCurrentGitBranchName(string $path): string
+    {
+        $branch = $this->cli->runAsUser("cd $path && echo $(git rev-parse --abbrev-ref HEAD)");
+
+        // Remove unnecessary end of line character(s)
+        return Str::replace(["\n", PHP_EOL], "", $branch);
+    }
+
     public function pull(bool $for_41_develop = false, bool $verbose = false)
     {
         $git_branch = $for_41_develop
@@ -147,7 +160,9 @@ class Packages
 
         $result = [];
 
-        foreach ($this->getPackages() ?? [] as $package) {
+        $packages = $this->getPackages();
+
+        foreach ($packages ?? [] as $package) {
 
             if (!array_key_exists($package['name'], $result)) {
                 $result[$package['name']] = [];
@@ -160,7 +175,7 @@ class Packages
             $package_set['path'] = $package['path'];
 
             $package_set['commands'] = array_map(function ($command) use ($package) {
-                return 'cd '.$package['path'].' && '.$command;
+                return 'sudo -u '.user().' cd '.$package['path'].' && '.$command;
             }, $package_commands);
         }
 
@@ -168,7 +183,25 @@ class Packages
             return $set['commands'];
         })->toArray();
 
-        $processManager = new ProcessManager();
+        // Create a new ProcessManager instance to run the
+        // git commands in parallel where possible
+        $processManager = new ProcessManager($this->cli);
+
+        $processManager->setFinalCallback(function () use (&$result) {
+            foreach ($this->getPackages() ?? [] as $package) {
+
+                $package_set = &$result[$package['name']];
+                $package_set['updated_version'] = $this->getPackageVersion($package['path']);
+                $package_set['branch'] = $this->getCurrentGitBranchName($package['path']);
+
+                unset($package_set['path']);
+                unset($package_set['commands']);
+            }
+
+            dump($result);
+        });
+
+        $processManager->setVerbosity($verbose);
         $processManager->buildProcessesBundleAndStart($commands);
     }
 
