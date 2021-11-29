@@ -86,7 +86,9 @@ class ProcessManager
 
                 $process->on('exit', function ($exitCode, $termSignal) use (&$bundle, $process, $index) {
 
-                    $this->cli->getProgress()->advance();
+                    if (!$this->verbose) {
+                        $this->cli->getProgress()->advance();
+                    }
 
                     // Add to the "exited" process collection
                     $this->getProcessCollections('exited')->push($process);
@@ -121,8 +123,12 @@ class ProcessManager
 
                     // All processes are finished
                     if ($queued === $exited) {
-                        $this->cli->getProgress()->finish();
+                        // Keeps the stdout clean during verbose mode
+                        if (!$this->verbose) {
+                            $this->cli->getProgress()->finish();
+                        }
 
+                        // Last but not least, run the bound callback
                         $this->getFinalCallback();
                     }
                 });
@@ -219,7 +225,9 @@ class ProcessManager
             });
         });
 
-        $this->cli->getProgress($total_processes);
+        if (!$this->verbose) {
+            $this->cli->getProgress($total_processes);
+        }
     }
 
     /**

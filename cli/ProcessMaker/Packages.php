@@ -2,7 +2,6 @@
 
 namespace ProcessMaker\Cli;
 
-use Closure;
 use RuntimeException;
 use Illuminate\Support\Str;
 
@@ -223,6 +222,9 @@ class Packages
         $processManager->buildProcessesBundleAndStart($commands);
     }
 
+    /**
+     * @param  array  $metadata
+     */
     public function outputPullResults(array $metadata)
     {
         $table = [];

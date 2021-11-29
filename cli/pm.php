@@ -10,7 +10,6 @@ if (file_exists(__DIR__.'/../vendor/autoload.php')) {
 }
 
 use Silly\Application;
-use Illuminate\Support\Str;
 use Illuminate\Container\Container;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
