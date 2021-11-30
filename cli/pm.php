@@ -34,9 +34,9 @@ $app->command('pull [-4|--for_41_develop]', function (InputInterface $input, Out
 	['--for_41_develop' => 'Change each package to the correct version for the 4.1 version of processmaker/processmaker']
 );
 
-$app->command('clone-all', function () {
+$app->command('clone-all [-f|--force]', function ($force = null) {
 	try {
-        if (Packages::cloneAllPackages()) {
+        if (Packages::cloneAllPackages($force)) {
             info('All ProcessMaker packages cloned successfully!');
         }
 	} catch (Exception $exception) {

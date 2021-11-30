@@ -2,11 +2,9 @@
 
 namespace ProcessMaker\Cli;
 
-use Exception;
-use LogicException;
+use \Exception, \LogicException;
 use \FileSystem as FileSystemFacade;
 use \CommandLine as CommandLineFacade;
-use \Packages as PackagesFacade;
 use \Composer as ComposerFacade;
 use \Git as GitFacade;
 use Illuminate\Support\Str;
@@ -34,6 +32,7 @@ class Packages
         'docker-executor-lua',
         'docker-executor-php',
         'docker-executor-node',
+        'docker-executor-node-ssr'
     ];
 
     /**
@@ -58,7 +57,7 @@ class Packages
      *
      * @return mixed
      */
-    public function getPackage(string $name)
+    public function getPackage(string $name): array
     {
         if (Str::contains($name, 'processmaker/')) {
             $name = Str::replace('processmaker/', '', $name);
@@ -71,7 +70,7 @@ class Packages
         return $this->getPackages()[$name];
     }
 
-    public function getSupportedPackages()
+    public function getSupportedPackages(): array
     {
         if (!$this->packageExists('packages')) {
             throw new LogicException('"processmaker/packages" composer meta-package not found.');
@@ -90,9 +89,6 @@ class Packages
         // Find and decode composer.json
         $composer_json = json_decode(FileSystemFacade::get("$packages_package_path/composer.json"));
 
-        // Get the supported packages
-        $supported_packages = [];
-
         try {
             // We want just the package names for now
             $supported_packages = array_keys(get_object_vars($composer_json->extra->processmaker->enterprise));
@@ -103,10 +99,10 @@ class Packages
         // Merge the supported enterprise package names with
         // the handful of other packages required for the
         // primary (processmaker/processmaker) app to function
-        $supported_packages = array_merge($supported_packages, self::$additionalPackages);
+        $supported_packages = array_merge($supported_packages ?? [], self::$additionalPackages);
 
         // Sort it and send it back
-        return collect($supported_packages)->sort()->toArray();
+        return collect($supported_packages)->values()->sort()->toArray();
     }
 
     /**
@@ -136,12 +132,21 @@ class Packages
         return $this->packageExists($name);
     }
 
-    public function cloneAllPackages()
+    /**
+     * Clones all supported PM4 packages to the local package directory
+     *
+     * @param  bool  $force
+     *
+     * @return bool
+     */
+    public function cloneAllPackages(bool $force = false): bool
     {
         // Clear the ProcessMaker packages directory before
         // we start cloning the new ones down
-        foreach ($this->getPackages() as $package) {
-            FileSystemFacade::rmdir($package['path']);
+        if ($force) {
+            foreach ($this->getPackages() as $package) {
+                FileSystemFacade::rmdir($package['path']);
+            }
         }
 
         // Clone down the processmaker/packages meta-package to
@@ -151,7 +156,16 @@ class Packages
             $this->clonePackage('packages');
         }
 
-        dump($this->getSupportedPackages());
+        // Iterate through the list and attempt to clone them down
+        foreach ($this->getSupportedPackages() as $index => $package) {
+            try {
+                if ($this->clonePackage($package)) {
+                    info("Package $package cloned successfully!");
+                }
+            } catch (Exception $exception) {
+                info($exception->getMessage());
+            }
+        }
 
         return true;
     }
@@ -268,15 +282,15 @@ class Packages
      */
     public function takePackagesSnapshot(bool $updated = false, array $metadata = []): array
     {
-        foreach (PackagesFacade::getPackages() as $package) {
+        foreach ($this->getPackages() as $package) {
 
             $version_key = $updated ? 'updated_version' : 'version';
             $branch_key = $updated ? 'updated_branch' : 'branch';
 
             $metadata[$package['name']] = [
                 'name' => $package['name'],
-                $version_key => PackagesFacade::getPackageVersion($package['path']),
-                $branch_key => PackagesFacade::getCurrentGitBranchName($package['path'])
+                $version_key => $this->getPackageVersion($package['path']),
+                $branch_key => $this->getCurrentGitBranchName($package['path'])
             ];
         }
 
@@ -291,7 +305,7 @@ class Packages
      */
     public function buildPullCommands(string $branch, array $commands = []): array
     {
-        foreach (PackagesFacade::getPackages() as $package) {
+        foreach ($this->getPackages() as $package) {
             $package_commands = [
                 'git reset --hard',
                 'git clean -d -f .',
@@ -320,10 +334,10 @@ class Packages
         $get_default_git_branch = "$(git symbolic-ref refs/remotes/origin/HEAD | sed 's@^refs/remotes/origin/@@')";
 
         // Build the commands for each package (keyed by package name)
-        $commands = PackagesFacade::buildPullCommands($branch ?? $get_default_git_branch);
+        $commands = $this->buildPullCommands($branch ?? $get_default_git_branch);
 
         // Store the pre-pull metadata for each package
-        $metadata = PackagesFacade::takePackagesSnapshot();
+        $metadata = $this->takePackagesSnapshot();
 
         // Create a new ProcessManagerFacade instance to run the
         // git commands in parallel where possible
@@ -334,7 +348,7 @@ class Packages
 
         // Set a closure to be called when the final process exits
         $processManager->setFinalCallback(function () use ($metadata) {
-            PackagesFacade::outputPullResults($metadata);
+            $this->outputPullResults($metadata);
         });
 
         // Build the process queue and run
@@ -349,7 +363,7 @@ class Packages
         $table = [];
 
         // Build the table rows
-        foreach (PackagesFacade::takePackagesSnapshot(true) as $package => $updated) {
+        foreach ($this->takePackagesSnapshot(true) as $package => $updated) {
             $table[$package] = array_merge($metadata[$package], $updated);
         }
 
@@ -377,7 +391,7 @@ class Packages
             }
 
             // Do the same thing with branches, since we may
-            // have switch to 4.1 or 4.1 during the pull, which
+            // have switch to 4.1 or 4.2 during the pull, which
             // is set by the user by adding a flag to the command
             if ($row['branch'] !== $row['updated_branch']) {
                 $table[$key]['updated_branch'] = '<info>'.$row['updated_branch'].'</info>';
