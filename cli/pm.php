@@ -13,8 +13,8 @@ use Silly\Application;
 use Illuminate\Container\Container;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
-use function ProcessMaker\Cli\table;
 use function ProcessMaker\Cli\info;
+use function ProcessMaker\Cli\warning;
 
 Container::setInstance(new Container);
 
@@ -30,34 +30,43 @@ $app->command('pull [-4|--for_41_develop]', function (InputInterface $input, Out
 
 	// Put everything together and run it
 	$for_41_develop ? Packages::pull41($verbose) : Packages::pull($verbose);
+})->descriptions('Cycles through each local store of supported ProcessMaker 4 packages.',
+	['--for_41_develop' => 'Change each package to the correct version for the 4.1 version of processmaker/processmaker']
+);
+
+$app->command('clone-all', function () {
+	try {
+        if (Packages::cloneAllPackages()) {
+            info('All ProcessMaker packages cloned successfully!');
+        }
+	} catch (Exception $exception) {
+		warning($exception->getMessage());
+	}
+});
+
+$app->command('clone package [-f|--force]', function ($package, $force = null) {
+	try {
+		if (Packages::clonePackage($package, $force)) {
+			info("$package cloned successfully!");
+		}
+	} catch (Exception $exception) {
+		warning($exception->getMessage());
+	}
 });
 
 $app->command('trust [--off]', function ($off) {
 	if ($off) {
-        ProcessMaker::unlinkFromUsersBin();
-        ProcessMaker::removeSudoersEntry();
+        Install::unlinkFromUsersBin();
+        Install::removeSudoersEntry();
 
         return info('ProcessMaker CLI tool removed sudoers file.');
 	}
 
-    ProcessMaker::symlinkToUsersBin();
-    ProcessMaker::createSudoersEntry();
+    Install::symlinkToUsersBin();
+    Install::createSudoersEntry();
 
     info('ProcessMaker CLI tool added to sudoers file.');
 
 })->descriptions('Adds the pm cli tool to the sudoers file.');
-
-$app->command('pull-packages [-4|--for_41_develop] [-d|--directory]',
-	function ($for_41_develop = null, $directory = null) {
-
-		info($for_41_develop
-			? "Updating local ProcessMaker composer packages to 4.1-develop..."
-			: "Updating local ProcessMaker composer packages...");
-
-        table(['Package', 'Version', 'Updated Version', '4.1', 'Errors'],
-            Packages::pullPackages($for_41_develop ?? false, $directory));
-
-	}
-)->descriptions('Iterate through each ProcessMaker package (locally) and pull down any updates from GitHub.');
 
 $app->run();

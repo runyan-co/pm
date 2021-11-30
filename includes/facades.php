@@ -9,7 +9,7 @@ class Facade
      *
      * @return string
      */
-    public static function containerKey()
+    public static function containerKey(): string
     {
         return 'ProcessMaker\\Cli\\'.basename(str_replace('\\', '/', get_called_class()));
     }
@@ -34,5 +34,7 @@ class Facade
 class CommandLine extends Facade {}
 class FileSystem extends Facade {}
 class Packages extends Facade {}
-class ProcessMaker extends Facade {}
+class Install extends Facade {}
 class ProcessManager extends Facade {}
+class Composer extends Facade {}
+class Git extends Facade {}

@@ -11,6 +11,10 @@ if (!defined('BREW_PREFIX')) {
     define('BREW_PREFIX', (new CommandLine())->runAsUser('printf $(brew --prefix)'));
 }
 
+if (!defined('USER_HOME')) {
+    define('USER_HOME', getenv('HOME'));
+}
+
 /**
  * Resolve the given class from the container.
  *

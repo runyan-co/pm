@@ -2,24 +2,18 @@
 
 namespace ProcessMaker\Cli;
 
-use CommandLine as CommandLineFacade;
+use \CommandLine as CommandLineFacade;
 
 class FileSystem
 {
-    public $cli;
-
-    public function __construct(CommandLine $cli)
-    {
-        $this->cli = $cli;
-    }
-
     /**
      * Determine if the given path is a directory.
      *
      * @param  string  $path
+     *
      * @return bool
      */
-    public function isDir($path)
+    public function isDir(string $path): bool
     {
         return is_dir($path);
     }
@@ -31,7 +25,7 @@ class FileSystem
      *
      * @return bool
      */
-    public function rmdir(string $path)
+    public function rmdir(string $path): bool
     {
         if (!$this->isDir($path)) {
             return false;
@@ -39,9 +33,10 @@ class FileSystem
 
         $success = true;
 
-        $this->cli->runAsUser("rm -rf $path", function ($error, $output) use (&$success, $path) {
-            $success = false;
-        });
+        CommandLineFacade::runAsUser("rm -rf $path",
+            function ($error, $output) use (&$success, $path) {
+                $success = false;
+            });
 
         return $success;
     }
@@ -52,9 +47,10 @@ class FileSystem
      * @param  string  $path
      * @param  string|null  $owner
      * @param  int  $mode
+     *
      * @return void
      */
-    public function mkdir($path, $owner = null, $mode = 0755)
+    public function mkdir(string $path, string $owner = null, int $mode = 0755)
     {
         mkdir($path, $mode, true);
 
@@ -69,9 +65,10 @@ class FileSystem
      * @param  string  $path
      * @param  string|null  $owner
      * @param  int  $mode
+     *
      * @return void
      */
-    public function ensureDirExists($path, $owner = null, $mode = 0755)
+    public function ensureDirExists(string $path, string $owner = null, int $mode = 0755)
     {
         if (! $this->isDir($path)) {
             $this->mkdir($path, $owner, $mode);
@@ -83,9 +80,10 @@ class FileSystem
      *
      * @param  string  $path
      * @param  int  $mode
+     *
      * @return void
      */
-    public function mkdirAsUser($path, $mode = 0755)
+    public function mkdirAsUser(string $path, int $mode = 0755)
     {
         $this->mkdir($path, user(), $mode);
     }
@@ -95,9 +93,10 @@ class FileSystem
      *
      * @param  string  $path
      * @param  string|null  $owner
+     *
      * @return string
      */
-    public function touch($path, $owner = null)
+    public function touch(string $path, string $owner = null): string
     {
         touch($path);
 
@@ -115,7 +114,7 @@ class FileSystem
      *
      * @return string
      */
-    public function touchAsUser($path)
+    public function touchAsUser(string $path): string
     {
         return $this->touch($path, user());
     }
@@ -124,9 +123,10 @@ class FileSystem
      * Determine if the given file exists.
      *
      * @param  string  $path
+     *
      * @return bool
      */
-    public function exists($path)
+    public function exists(string $path): bool
     {
         return file_exists($path);
     }
@@ -135,9 +135,10 @@ class FileSystem
      * Read the contents of the given file.
      *
      * @param  string  $path
+     *
      * @return string
      */
-    public function get($path)
+    public function get(string $path): string
     {
         return file_get_contents($path);
     }
@@ -148,9 +149,10 @@ class FileSystem
      * @param  string  $path
      * @param  string  $contents
      * @param  string|null  $owner
+     *
      * @return void
      */
-    public function put($path, $contents, $owner = null)
+    public function put(string $path, string $contents, string $owner = null)
     {
         file_put_contents($path, $contents);
 
@@ -164,9 +166,10 @@ class FileSystem
      *
      * @param  string  $path
      * @param  string  $contents
+     *
      * @return void
      */
-    public function putAsUser($path, $contents)
+    public function putAsUser(string $path, string $contents)
     {
         $this->put($path, $contents, user());
     }
@@ -177,9 +180,10 @@ class FileSystem
      * @param  string  $path
      * @param  string  $contents
      * @param  string|null  $owner
+     *
      * @return void
      */
-    public function append($path, $contents, $owner = null)
+    public function append(string $path, string $contents, string $owner = null)
     {
         file_put_contents($path, $contents, FILE_APPEND);
 
@@ -193,9 +197,10 @@ class FileSystem
      *
      * @param  string  $path
      * @param  string  $contents
+     *
      * @return void
      */
-    public function appendAsUser($path, $contents)
+    public function appendAsUser(string $path, string $contents)
     {
         $this->append($path, $contents, user());
     }
@@ -205,9 +210,10 @@ class FileSystem
      *
      * @param  string  $from
      * @param  string  $to
+     *
      * @return void
      */
-    public function copy($from, $to)
+    public function copy(string $from, string $to)
     {
         copy($from, $to);
     }
@@ -217,9 +223,10 @@ class FileSystem
      *
      * @param  string  $from
      * @param  string  $to
+     *
      * @return void
      */
-    public function copyAsUser($from, $to)
+    public function copyAsUser(string $from, string $to)
     {
         copy($from, $to);
 
@@ -231,9 +238,10 @@ class FileSystem
      *
      * @param  string  $target
      * @param  string  $link
+     *
      * @return void
      */
-    public function symlink($target, $link)
+    public function symlink(string $target, string $link)
     {
         if ($this->exists($link)) {
             $this->unlink($link);
@@ -264,9 +272,10 @@ class FileSystem
      * Delete the file at the given path.
      *
      * @param  string  $path
+     *
      * @return void
      */
-    public function unlink($path)
+    public function unlink(string $path)
     {
         if (file_exists($path) || is_link($path)) {
             @unlink($path);
@@ -279,7 +288,7 @@ class FileSystem
      * @param  string  $path
      * @param  string  $user
      */
-    public function chown($path, $user)
+    public function chown(string $path, string $user)
     {
         chown($path, $user);
     }
@@ -290,7 +299,7 @@ class FileSystem
      * @param  string  $path
      * @param  string  $group
      */
-    public function chgrp($path, $group)
+    public function chgrp(string $path, string $group)
     {
         chgrp($path, $group);
     }
@@ -299,9 +308,10 @@ class FileSystem
      * Resolve the given path.
      *
      * @param  string  $path
+     *
      * @return string
      */
-    public function realpath($path)
+    public function realpath(string $path): string
     {
         return realpath($path);
     }
@@ -310,9 +320,10 @@ class FileSystem
      * Determine if the given path is a symbolic link.
      *
      * @param  string  $path
+     *
      * @return bool
      */
-    public function isLink($path)
+    public function isLink(string $path): bool
     {
         return is_link($path);
     }
@@ -321,9 +332,10 @@ class FileSystem
      * Resolve the given symbolic link.
      *
      * @param  string  $path
+     *
      * @return string
      */
-    public function readLink($path)
+    public function readLink(string $path): string
     {
         return readlink($path);
     }
@@ -332,9 +344,10 @@ class FileSystem
      * Remove all of the broken symbolic links at the given path.
      *
      * @param  string  $path
+     *
      * @return void
      */
-    public function removeBrokenLinksAt($path)
+    public function removeBrokenLinksAt(string $path)
     {
         collect($this->scandir($path))->filter(function ($file) use ($path) {
             return $this->isBrokenLink($path.'/'.$file);
@@ -347,9 +360,10 @@ class FileSystem
      * Determine if the given path is a broken symbolic link.
      *
      * @param  string  $path
+     *
      * @return bool
      */
-    public function isBrokenLink($path)
+    public function isBrokenLink(string $path): bool
     {
         return is_link($path) && ! file_exists($path);
     }
@@ -358,9 +372,10 @@ class FileSystem
      * Scan the given directory path.
      *
      * @param  string  $path
+     *
      * @return array
      */
-    public function scandir($path)
+    public function scandir(string $path): array
     {
         return collect(scandir($path))->reject(function ($file) {
             return in_array($file, ['.', '..']);
