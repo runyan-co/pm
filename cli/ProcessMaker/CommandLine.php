@@ -57,6 +57,11 @@ class CommandLine
         $this->quietly('sudo -u "'.user().'" '.$command.' > /dev/null 2>&1');
     }
 
+    public function transformCommandToRunAsUser(string $command, string $path): string
+    {
+        return 'cd '.$path.' && sudo -u '.user().' '.$command;
+    }
+
     /**
      * Pass the command to the command line and display the output.
      *

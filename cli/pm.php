@@ -20,6 +20,10 @@ Container::setInstance(new Container);
 
 $app = new Application('ProcessMaker CLI Tool', '0.5.0');
 
+$app->command('install-packages', function () {
+	Composer::installEnterprisePackages();
+});
+
 $app->command('pull [-4|--for_41_develop]', function (InputInterface $input, OutputInterface $output) {
 
     // Updates to 4.1-branch of packages (or not)
@@ -30,11 +34,13 @@ $app->command('pull [-4|--for_41_develop]', function (InputInterface $input, Out
 
 	// Put everything together and run it
 	$for_41_develop ? Packages::pull41($verbose) : Packages::pull($verbose);
+
 })->descriptions('Cycles through each local store of supported ProcessMaker 4 packages.',
 	['--for_41_develop' => 'Change each package to the correct version for the 4.1 version of processmaker/processmaker']
 );
 
 $app->command('clone-all [-f|--force]', function ($force = null) {
+
 	try {
         if (Packages::cloneAllPackages($force)) {
             info('All ProcessMaker packages cloned successfully!');
@@ -42,16 +48,7 @@ $app->command('clone-all [-f|--force]', function ($force = null) {
 	} catch (Exception $exception) {
 		warning($exception->getMessage());
 	}
-});
 
-$app->command('clone package [-f|--force]', function ($package, $force = null) {
-	try {
-		if (Packages::clonePackage($package, $force)) {
-			info("$package cloned successfully!");
-		}
-	} catch (Exception $exception) {
-		warning($exception->getMessage());
-	}
 });
 
 $app->command('trust [--off]', function ($off) {

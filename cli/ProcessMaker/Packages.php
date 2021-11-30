@@ -70,7 +70,7 @@ class Packages
         return $this->getPackages()[$name];
     }
 
-    public function getSupportedPackages(): array
+    public function getSupportedPackages(bool $enterpriseOnly = false): array
     {
         if (!$this->packageExists('packages')) {
             throw new LogicException('"processmaker/packages" composer meta-package not found.');
@@ -96,10 +96,12 @@ class Packages
             return warning('Enterprise packages not found in processmaker/packages composer.json');
         }
 
-        // Merge the supported enterprise package names with
-        // the handful of other packages required for the
-        // primary (processmaker/processmaker) app to function
-        $supported_packages = array_merge($supported_packages ?? [], self::$additionalPackages);
+        if (!$enterpriseOnly) {
+            // Merge the supported enterprise package names with
+            // the handful of other packages required for the
+            // primary (processmaker/processmaker) app to function
+            $supported_packages = array_merge($supported_packages ?? [], self::$additionalPackages);
+        }
 
         // Sort it and send it back
         return collect($supported_packages)->values()->sort()->toArray();
@@ -315,7 +317,7 @@ class Packages
             ];
 
             $commands[$package['name']] = array_map(function ($command) use ($package) {
-                return 'cd '.$package['path'].' && sudo -u '.user().' '.$command;
+                return CommandLineFacade::transformCommandToRunAsUser($command, $package['path']);
             }, $package_commands);
         }
 
