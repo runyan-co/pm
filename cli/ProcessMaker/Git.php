@@ -3,6 +3,8 @@
 namespace ProcessMaker\Cli;
 
 use \LogicException, \RuntimeException;
+use Silly\Command\Command;
+use React\ChildProcess\Process;
 use \CommandLine as CommandLineFacade;
 use \FileSystem as FileSystemFacade;
 use Illuminate\Support\Str;
@@ -18,6 +20,22 @@ class Git
         if (!FileSystemFacade::exists("$path/.git")) {
             throw new LogicException("Git repository not found in directory: $path");
         }
+    }
+
+    /**
+     * @param  string  $path_to_repo
+     *
+     * @return string
+     */
+    public function getCurrentCommitHash(string $path_to_repo): string
+    {
+        $this->validateGitRepository($path_to_repo);
+
+        $output = CommandLineFacade::runAsUser('git rev-parse --short HEAD', function ($e, $o) {
+            throw new RuntimeException('Error trying to retrieve current git commit hash.');
+        }, $path_to_repo);
+
+        return Str::replace([PHP_EOL, "\n"], '', $output);
     }
 
     public function getDefaultBranch(string $path): string

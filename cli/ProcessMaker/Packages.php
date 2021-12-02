@@ -286,13 +286,16 @@ class Packages
     {
         foreach ($this->getPackages() as $package) {
 
+            $path = $package['path'];
             $version_key = $updated ? 'updated_version' : 'version';
             $branch_key = $updated ? 'updated_branch' : 'branch';
+            $hash_key = $updated ? 'updated_commit_hash' : 'commit_hash';
 
             $metadata[$package['name']] = [
                 'name' => $package['name'],
-                $version_key => $this->getPackageVersion($package['path']),
-                $branch_key => $this->getCurrentGitBranchName($package['path'])
+                $version_key => $this->getPackageVersion($path),
+                $branch_key => $this->getCurrentGitBranchName($path),
+                $hash_key => GitFacade::getCurrentCommitHash($path)
             ];
         }
 
@@ -357,16 +360,41 @@ class Packages
         $processManager->buildProcessesBundleAndStart($commands);
     }
 
+    public function outputPackagesTable()
+    {
+        $table = [];
+
+        // Build the table rows by merging the compare-with
+        // package metadata with a recent snapshot
+        foreach ($this->takePackagesSnapshot() as $package => $updated) {
+            $table[$package] = $updated;
+        }
+
+        // Sort the columns in a more sensible way
+        foreach ($table as $key => $row) {
+            $table[$key] = [
+                'name' => '<fg=cyan>'.$row['name'].'</>',
+                'version' => $row['version'],
+                'branch' => $row['branch'],
+                'commit_hash' => $row['commit_hash'],
+            ];
+        }
+
+        output(PHP_EOL);
+
+        table(['Name', 'Version', 'Branch', 'Commit Hash'], $table);
+    }
+
     /**
-     * @param  array  $metadata
+     * @param  array  $pre_pull_package_metadata
      */
-    public function outputPullResults(array $metadata)
+    public function outputPullResults(array $pre_pull_package_metadata)
     {
         $table = [];
 
         // Build the table rows
         foreach ($this->takePackagesSnapshot(true) as $package => $updated) {
-            $table[$package] = array_merge($metadata[$package], $updated);
+            $table[$package] = array_merge($pre_pull_package_metadata[$package], $updated);
         }
 
         // Sort the columns in a more sensible way
@@ -376,7 +404,9 @@ class Packages
                 'version' => $row['version'],
                 'updated_version' => $row['updated_version'],
                 'branch' => $row['branch'],
-                'updated_branch' => $row['updated_branch']
+                'updated_branch' => $row['updated_branch'],
+                'commit_hash' => $row['commit_hash'],
+                'updated_commit_hash' => $row['updated_commit_hash']
             ];
         }
 
@@ -398,12 +428,25 @@ class Packages
             if ($row['branch'] !== $row['updated_branch']) {
                 $table[$key]['updated_branch'] = '<info>'.$row['updated_branch'].'</info>';
             }
+
+            // One more time to see if the commit hash has changed
+            if ($row['commit_hash'] !== $row['updated_commit_hash']) {
+                $table[$key]['updated_commit_hash'] = '<info>'.$row['updated_commit_hash'].'</info>';
+            }
         }
 
         // Add a new line for space above the table
         output(PHP_EOL);
 
         // Format our results in an easy-to-ready table
-        table(['Name', 'Version', 'Updated Version', 'Branch', 'Updated Branch'], $table);
+        table([
+            'Name',
+            'Version ->',
+            '-> Version',
+            'Branch ->',
+            '-> Branch',
+            'Hash ->',
+            '-> Hash'
+        ], $table);
     }
 }

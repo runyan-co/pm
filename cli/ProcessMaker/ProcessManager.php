@@ -5,6 +5,7 @@ namespace ProcessMaker\Cli;
 use LogicException;
 use React\ChildProcess\Process;
 use Illuminate\Support\Collection;
+use Symfony\Component\Console\Output\ConsoleOutput;
 
 class ProcessManager
 {
@@ -12,7 +13,10 @@ class ProcessManager
 
     public $verbose = false;
 
-    public function __construct(CommandLine $cli, Collection $outputCollection, Collection $processCollections)
+    public function __construct(
+        CommandLine $cli,
+        Collection $outputCollection,
+        Collection $processCollections)
     {
         $this->cli = $cli;
         $this->processCollections = $processCollections;

@@ -47,7 +47,7 @@ $app->command('install-packages [-4|--for_41_develop]', function (InputInterface
 
 	// Set the callback to run when all Processes have exited
     $processManager->setFinalCallback(function () use (&$processManager) {
-        $processManager->outputPostInstallPackages();
+        Composer::outputPostInstallPackages($processManager);
     });
 
 	// Pass the commands off to the ProcessManager
@@ -55,6 +55,10 @@ $app->command('install-packages [-4|--for_41_develop]', function (InputInterface
     $processManager->buildProcessesBundleAndStart([
 		$install_commands->toArray()
     ]);
+});
+
+$app->command('packages', function () {
+	Packages::outputPackagesTable();
 });
 
 $app->command('pull [-4|--for_41_develop]', function (InputInterface $input, OutputInterface $output) {
