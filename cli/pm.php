@@ -46,8 +46,8 @@ $app->command('install-packages [-4|--for_41_develop]', function (InputInterface
 	$processManager->setVerbosity($verbosity);
 
 	// Set the callback to run when all Processes have exited
-    $processManager->setFinalCallback(function () use ($processManager) {
-        Composer::outputPostInstallPackages($processManager);
+    $processManager->setFinalCallback(function () use (&$processManager) {
+        $processManager->outputPostInstallPackages();
     });
 
 	// Pass the commands off to the ProcessManager

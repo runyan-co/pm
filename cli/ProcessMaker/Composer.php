@@ -28,50 +28,68 @@ class Composer
         // Grab the list of supported enterprise packages
         $enterprise_packages = new Collection(PackagesFacade::getSupportedPackages(true));
 
+        // Build a single command to require all enterprise packages
+        $composer_require_packages = implode(' ',
+            (clone $enterprise_packages)->transform(function (string $package) {
+                return "processmaker/$package";
+            })->toArray());
+
+        // Convert it to the actual command
+        $composer_require_packages = [
+            "composer require $composer_require_packages --no-interaction --no-scripts"
+        ];
+
         // Build the stack of commands to run
-        return $enterprise_packages->transform(function (string $package) {
+        $install_and_publish_commands = $enterprise_packages->transform(function (string $package) {
             return [
-                "composer require processmaker/$package --no-interaction --no-scripts",
                 PHP_BINARY." artisan $package:install",
                 PHP_BINARY." artisan vendor:publish --tag=$package"
             ];
-        })->transform(function (array $commands) {
-            return collect($commands)->transform(function (string $command) {
+        });
+
+        // Add the composer require command as the first command to run
+        $commands = $install_and_publish_commands->prepend($composer_require_packages);
+
+        // Transform each command so it's executed in the proper
+        // directory and run it as the appropriate user then flatten
+        // the collection and return it as an array
+        return $commands->transform(function (array $commands) {
+            return array_map(function (string $command) {
                 return CommandLineFacade::transformCommandToRunAsUser($command, CODEBASE_PATH);
-            })->toArray();
+            }, $commands);
         })->flatten();
     }
 
     public function outputPostInstallPackages(ProcessManager $processManager)
     {
-        $output = $processManager->getProcessOutput();
+        $processManager->getProcessOutput()->each(
+            function (Collection $output, $command) use ($processManager) {
 
-        $output->each(function (Collection $output, $command) use ($processManager) {
-            if ($output->isEmpty()) {
-                return;
-            }
+                if ($output->isEmpty()) {
+                    return;
+                }
 
-            // Grab the exit code which ran this command
-            $exitCode = $processManager->findProcessExitCode($command);
+                // Grab the exit code which ran this command
+                $exitCode = $processManager->findProcessExitCode($command);
 
-            // Output successfully run commands and the ones which failed
-            if ($exitCode === 0) {
-                output("<info>Command Success:</info> $command");
-            } else {
-                output("<fg=red>Command Failed:</> $command");
-            }
+                // Output successfully run commands and the ones which failed
+                if ($exitCode === 0) {
+                    output("<info>Command Success:</info> $command");
+                } else {
+                    output("<fg=red>Command Failed:</> $command");
+                }
 
-            if ($processManager->verbose) {
-                // Removes the exit code value from the output
-                $output = $output->reject(function ($line) {
-                    return is_array($line);
-                });
+                if ($processManager->verbose) {
+                    // Removes the exit code value from the output
+                    $output = $output->reject(function ($line) {
+                        return is_array($line);
+                    });
 
-                output((function () use ($output) {
-                    return implode("", $output->toArray());
-                })());
-            }
-        });
+                    output((function () use ($output) {
+                        return implode("", $output->toArray());
+                    })());
+                }
+            });
     }
 
     /**

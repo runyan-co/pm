@@ -126,6 +126,18 @@ class ProcessManager
                     // Add to the "exited" process collection
                     $this->getProcessCollections('exited')->push($process);
 
+                    // Get the info we need to output to stdout
+                    $pid = $process->getPid();
+                    $command = $process->getCommand();
+
+                    if ($this->verbose) {
+                        if ($exitCode === 0) {
+                            output("<fg=cyan>$pid</>: <info>$command</info>");
+                        } else {
+                            output("<fg=cyan>$pid</>: <fg=red>$command</>");
+                        }
+                    }
+
                     // Add to the process collections
                     if ($exitCode === 0) {
                         $this->getProcessCollections('successful')->push($process);
