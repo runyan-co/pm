@@ -57,9 +57,9 @@ class CommandLine
         $this->quietly('sudo -u "'.user().'" '.$command.' > /dev/null 2>&1');
     }
 
-    public function transformCommandToRunAsUser(string $command, string $path): string
+    public function transformCommandToRunAsUser(string $command, string $path = null): string
     {
-        return 'cd '.$path.' && sudo -u '.user().' '.$command;
+        return ($path ? 'cd '.$path.' && ' : '').'sudo -u '.user().' '.$command;
     }
 
     /**
@@ -81,7 +81,7 @@ class CommandLine
      */
     private function createProgressBar(int $count)
     {
-        $this->progress = new ProgressBar(new ConsoleOutput(), $count);
+        $this->progress = new ProgressBar(new ConsoleOutput, $count);
 
         ProgressBar::setFormatDefinition('minimal', 'Progress: %percent%%');
 

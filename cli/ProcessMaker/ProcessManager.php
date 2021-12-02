@@ -8,13 +8,15 @@ use Illuminate\Support\Collection;
 
 class ProcessManager
 {
-    private $processCollections, $processOutput, $finalCallback, $cli;
+    private $processCollections, $outputCollection, $finalCallback, $cli;
 
-    private $verbose = false;
+    public $verbose = false;
 
-    public function __construct(CommandLine $cli)
+    public function __construct(CommandLine $cli, Collection $outputCollection, Collection $processCollections)
     {
         $this->cli = $cli;
+        $this->processCollections = $processCollections;
+        $this->outputCollection = $outputCollection;
     }
 
     public function setVerbosity(bool $verbose)
@@ -22,7 +24,21 @@ class ProcessManager
         $this->verbose = $verbose;
     }
 
-    public function getProcessExitCodeFromOutput(string $key): int
+    public function getProcessOutput(string $key = null): Collection
+    {
+        return $key ? $this->outputCollection->get($key) : $this->outputCollection;
+    }
+
+    public function addProcessOutput(string $key, $output)
+    {
+        if (!$this->getProcessOutput()->has($key)) {
+             $this->getProcessOutput()->put($key, new Collection);
+        }
+
+        $this->getProcessOutput($key)->push($output);
+    }
+
+    public function findProcessExitCode(string $key): int
     {
         if (!$output = $this->getProcessOutput($key)) {
             return 1;
@@ -31,15 +47,7 @@ class ProcessManager
         // Search through the output for the array
         // containing the exit code value
         $exitCode = $output->reject(function ($line) {
-            if (!is_array($line)) {
-                return true;
-            }
-
-            if (!array_key_exists('exit_code', $line)) {
-                return true;
-            }
-
-            return false;
+            return ! is_array($line) || ! array_key_exists('exit_code', $line);
         });
 
         // If we can't find it, assume the process
@@ -51,26 +59,6 @@ class ProcessManager
         return 1;
     }
 
-    public function setProcessOutput(string $key, $output)
-    {
-        if (!$this->getProcessOutput()->has($key)) {
-            $this->getProcessOutput()->put($key, new Collection());
-        }
-
-        $this->getProcessOutput($key)->push($output);
-    }
-
-    public function getProcessOutput(string $key = null)
-    {
-        if (!$this->processOutput instanceof Collection) {
-            $this->processOutput = new Collection();
-        }
-
-        return $key
-            ? $this->processOutput->get($key)
-            : $this->processOutput;
-    }
-
     /**
      * @param  string  $key
      *
@@ -78,12 +66,8 @@ class ProcessManager
      */
     public function getProcessCollections(string $key): Collection
     {
-        if (!$this->processCollections instanceof Collection) {
-            $this->processCollections = new Collection();
-        }
-
         if (!$this->processCollections->get($key) instanceof Collection) {
-            $this->processCollections->put($key, new Collection());
+             $this->processCollections->put($key, new Collection());
         }
 
         return $this->processCollections->get($key);
@@ -150,7 +134,7 @@ class ProcessManager
                     }
 
                     // Add to the processOutput property for reading later
-                    $this->setProcessOutput($process->getCommand(), ['exit_code' => $exitCode]);
+                    $this->addProcessOutput($process->getCommand(), ['exit_code' => $exitCode]);
 
                     // Find the next process to run
                     $next_process = $bundle->get($index + 1);
@@ -284,7 +268,7 @@ class ProcessManager
         $process->start();
 
         $process->stdout->on('data', function ($output) use (&$process) {
-            $this->setProcessOutput($process->getCommand(), $output);
+            $this->addProcessOutput($process->getCommand(), $output);
         });
 
         $this->getProcessCollections('started')->push($process);

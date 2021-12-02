@@ -10,18 +10,51 @@ if (file_exists(__DIR__.'/../vendor/autoload.php')) {
 }
 
 use Silly\Application;
+use ProcessMaker\Cli\ProcessManager;
 use Illuminate\Container\Container;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use function ProcessMaker\Cli\info;
 use function ProcessMaker\Cli\warning;
+use function ProcessMaker\Cli\resolve;
 
-Container::setInstance(new Container);
+Container::setInstance(new Container());
 
 $app = new Application('ProcessMaker CLI Tool', '0.5.0');
 
-$app->command('install-packages', function () {
-	Composer::installEnterprisePackages();
+$app->command('install-packages [-4|--for_41_develop]', function (InputInterface $input, OutputInterface $output) {
+
+	// Indicates if we should install the 4.1-develop
+	// versions of each package or the 4.2
+	$for_41_develop = $input->getOption('for_41_develop');
+
+	// Should the output be verbose or not
+	$verbosity = $input->getOption('verbose');
+
+	// Builds an array of commands to run in the local
+	// processmaker/processmaker codebase to require
+	// each supported package, then install it and
+	// publish it's vendor assets (if any are available)
+    $install_commands = Composer::buildComposerRequireAndInstallPackagesCommands($for_41_develop);
+
+	// Grab an instance of the ProcessManager to run
+	// of the commands synchronously, but with one
+	// process per command
+    $processManager = resolve(ProcessManager::class);
+
+	// Set verbosity
+	$processManager->setVerbosity($verbosity);
+
+	// Set the callback to run when all Processes have exited
+    $processManager->setFinalCallback(function () use ($processManager) {
+        Composer::outputPostInstallPackages($processManager);
+    });
+
+	// Pass the commands off to the ProcessManager
+	// and start running them
+    $processManager->buildProcessesBundleAndStart([
+		$install_commands->toArray()
+    ]);
 });
 
 $app->command('pull [-4|--for_41_develop]', function (InputInterface $input, OutputInterface $output) {
@@ -40,7 +73,6 @@ $app->command('pull [-4|--for_41_develop]', function (InputInterface $input, Out
 );
 
 $app->command('clone-all [-f|--force]', function ($force = null) {
-
 	try {
         if (Packages::cloneAllPackages($force)) {
             info('All ProcessMaker packages cloned successfully!');
@@ -48,7 +80,6 @@ $app->command('clone-all [-f|--force]', function ($force = null) {
 	} catch (Exception $exception) {
 		warning($exception->getMessage());
 	}
-
 });
 
 $app->command('trust [--off]', function ($off) {
