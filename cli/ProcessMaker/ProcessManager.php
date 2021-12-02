@@ -8,7 +8,7 @@ use Illuminate\Support\Collection;
 
 class ProcessManager
 {
-    private $processCollections, $finalCallback, $cli;
+    private $processCollections, $processOutput, $finalCallback, $cli;
 
     private $verbose = false;
 
@@ -22,12 +22,61 @@ class ProcessManager
         $this->verbose = $verbose;
     }
 
+    public function getProcessExitCodeFromOutput(string $key): int
+    {
+        if (!$output = $this->getProcessOutput($key)) {
+            return 1;
+        }
+
+        // Search through the output for the array
+        // containing the exit code value
+        $exitCode = $output->reject(function ($line) {
+            if (!is_array($line)) {
+                return true;
+            }
+
+            if (!array_key_exists('exit_code', $line)) {
+                return true;
+            }
+
+            return false;
+        });
+
+        // If we can't find it, assume the process
+        // exited with a general error
+        if ($exitCode->isNotEmpty()) {
+            return $exitCode->flatten()->first() ?? 1;
+        }
+
+        return 1;
+    }
+
+    public function setProcessOutput(string $key, $output)
+    {
+        if (!$this->getProcessOutput()->has($key)) {
+            $this->getProcessOutput()->put($key, new Collection());
+        }
+
+        $this->getProcessOutput($key)->push($output);
+    }
+
+    public function getProcessOutput(string $key = null)
+    {
+        if (!$this->processOutput instanceof Collection) {
+            $this->processOutput = new Collection();
+        }
+
+        return $key
+            ? $this->processOutput->get($key)
+            : $this->processOutput;
+    }
+
     /**
      * @param  string  $key
      *
      * @return Collection
      */
-    protected function getProcessCollections(string $key): Collection
+    public function getProcessCollections(string $key): Collection
     {
         if (!$this->processCollections instanceof Collection) {
             $this->processCollections = new Collection();
@@ -100,20 +149,13 @@ class ProcessManager
                         $this->getProcessCollections('errors')->push($process);
                     }
 
-                    // Get the command run
-                    $command = $process->getCommand();
+                    // Add to the processOutput property for reading later
+                    $this->setProcessOutput($process->getCommand(), ['exit_code' => $exitCode]);
 
-                    // Return progress to stdout
-                    if ($this->verbose) {
-                        if ($exitCode === 0) {
-                            info("Process ($process->index): Success running \"$command\"");
-                        } else {
-                            warning("Process ($process->index): Failed running \"$command\"");
-                        }
-                    }
-
+                    // Find the next process to run
                     $next_process = $bundle->get($index + 1);
 
+                    // If one exists, run it
                     if ($next_process instanceof Process) {
                         $this->startProcessAndPipeOutput($next_process);
                     }
@@ -240,6 +282,10 @@ class ProcessManager
         }
 
         $process->start();
+
+        $process->stdout->on('data', function ($output) use (&$process) {
+            $this->setProcessOutput($process->getCommand(), $output);
+        });
 
         $this->getProcessCollections('started')->push($process);
     }
