@@ -70,6 +70,16 @@ class Packages
         return $this->getPackages()[$name];
     }
 
+    /**
+     * @param  string  $name
+     *
+     * @return string
+     */
+    public function getPackagePath(string $name): string
+    {
+        return $this->getPackage($name)['path'];
+    }
+
     public function getSupportedPackages(bool $enterpriseOnly = false): array
     {
         if (!$this->packageExists('packages')) {
@@ -483,6 +493,13 @@ class Packages
 
         // Grab the list of supported enterprise packages
         $enterprise_packages = new Collection($this->getSupportedPackages(true));
+
+        if ($for_41_develop) {
+            // Filter out any not on the 4.1-develop branch
+            $enterprise_packages = $enterprise_packages->reject(function ($package) {
+                return '4.1-develop' !== GitFacade::getCurrentBranchName($this->getPackagePath($package));
+            });
+        }
 
         // Key by package name
         $enterprise_packages = $enterprise_packages->keyBy(static function ($package, $index) {
