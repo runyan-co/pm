@@ -497,6 +497,10 @@ class Packages
         if ($for_41_develop) {
             // Filter out any not on the 4.1-develop branch
             $enterprise_packages = $enterprise_packages->reject(function ($package) {
+                if ($package === 'docker-executor-node-ssr') {
+                    return false;
+                }
+
                 return '4.1-develop' !== GitFacade::getCurrentBranchName($this->getPackagePath($package));
             });
         }
