@@ -2,11 +2,12 @@
 
 namespace ProcessMaker\Cli;
 
-use \Exception, \LogicException;
+use \Exception, \LogicException, \DomainException;
+use \Git as GitFacade;
+use \Composer as ComposerFacade;
 use \FileSystem as FileSystemFacade;
 use \CommandLine as CommandLineFacade;
-use \Composer as ComposerFacade;
-use \Git as GitFacade;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
 class Packages
@@ -31,8 +32,7 @@ class Packages
         'nayra',
         'docker-executor-lua',
         'docker-executor-php',
-        'docker-executor-node',
-        'docker-executor-node-ssr'
+        'docker-executor-node'
     ];
 
     /**
@@ -87,7 +87,7 @@ class Packages
         $branchSwitchResult = GitFacade::switchBranch($defaultBranch, $packages_package_path);
 
         // Find and decode composer.json
-        $composer_json = json_decode(FileSystemFacade::get("$packages_package_path/composer.json"));
+        $composer_json = json_decode(FileSystemFacade::get("$packages_package_path/composer.json"), false);
 
         try {
             // We want just the package names for now
@@ -103,8 +103,20 @@ class Packages
             $supported_packages = array_merge($supported_packages ?? [], self::$additionalPackages);
         }
 
-        // Sort it and send it back
-        return collect($supported_packages)->values()->sort()->toArray();
+        // Sort it and and remove two packages so they can be
+        // prepended as other packages rely on them if the order
+        // returned is the order installed
+        $supported_packages = collect($supported_packages)->values()->sort()->reject(static function ($package) {
+            return $package === 'docker-executor-node-ssr'
+                || $package === 'connector-send-email'
+                || $package === 'packages';
+        });
+
+        // Prepend the removed packages
+        return $supported_packages->prepend('connector-send-email')
+                                  ->prepend('docker-executor-node-ssr')
+                                  ->prepend('packages')
+                                  ->toArray();
     }
 
     /**
@@ -183,7 +195,7 @@ class Packages
             $name = Str::replace('processmaker/', '', $name);
         }
 
-        return in_array($name, $this->getPackagesListFromDirectory());
+        return in_array($name, $this->getPackagesListFromDirectory(), true);
     }
 
     /**
@@ -439,14 +451,51 @@ class Packages
         output(PHP_EOL);
 
         // Format our results in an easy-to-ready table
-        table([
-            'Name',
-            'Version ->',
-            '-> Version',
-            'Branch ->',
-            '-> Branch',
-            'Hash ->',
-            '-> Hash'
-        ], $table);
+        table(['Name', 'Version ->', '-> Version', 'Branch ->', '-> Branch', 'Hash ->', '-> Hash'], $table);
+    }
+
+    /**
+     * Build the stack of commands to composer require and
+     * install each enterprise ProcessMaker 4 package
+     *
+     * @param  bool  $for_41_develop
+     * @param  bool  $force
+     *
+     * @return \Illuminate\Support\Collection
+     */
+    public function buildPackageInstallCommands(bool $for_41_develop = false, bool $force = false): Collection
+    {
+        if (!FileSystemFacade::isDir(CODEBASE_PATH)) {
+            throw new LogicException('Could not find ProcessMaker codebase: '.CODEBASE_PATH);
+        }
+
+        // Find out which branch to switch to in the local
+        // processmaker/processmaker codebase
+        $branch = $for_41_develop ? '4.1-develop' : 'develop';
+
+        // Find out which branch we're on
+        $current_branch = GitFacade::getCurrentBranchName(CODEBASE_PATH);
+
+        // Make sure we're on the right branch
+        if ($current_branch !== $branch && ! $force) {
+            throw new DomainException("Core codebase branch should be \"$branch\" but \"$current_branch\" was found.");
+        }
+
+        // Grab the list of supported enterprise packages
+        $enterprise_packages = new Collection($this->getSupportedPackages(true));
+
+        // Key by package name
+        $enterprise_packages = $enterprise_packages->keyBy(static function ($package, $index) {
+            return $package;
+        });
+
+        // Build the stack of commands to run
+        return $enterprise_packages->transform(static function (string $package) {
+            return new Collection([
+                "composer require processmaker/$package --no-interaction",
+                PHP_BINARY." artisan $package:install --no-interaction",
+                PHP_BINARY." artisan vendor:publish --tag=$package --no-interaction"
+            ]);
+        });
     }
 }

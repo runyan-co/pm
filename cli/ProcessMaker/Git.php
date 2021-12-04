@@ -23,6 +23,24 @@ class Git
     }
 
     /**
+     * Retrieve the git repo's current branch name
+     *
+     * @param  string  $path_to_repo
+     *
+     * @return string
+     */
+    public function getCurrentBranchName(string $path_to_repo): string
+    {
+        $this->validateGitRepository($path_to_repo);
+
+        $output = CommandLineFacade::runAsUser('git rev-parse --abbrev-ref HEAD', function ($e, $o) {
+            throw new RuntimeException('Error trying to retrieve current git branch name');
+        }, $path_to_repo);
+
+        return Str::replace([PHP_EOL, "\n"], '', $output);
+    }
+
+    /**
      * @param  string  $path_to_repo
      *
      * @return string

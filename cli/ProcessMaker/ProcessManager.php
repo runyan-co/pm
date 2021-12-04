@@ -209,7 +209,7 @@ class ProcessManager
     /**
      * @param  \Illuminate\Support\Collection  $bundles
      */
-    public function startProcessesBundle(Collection $bundles)
+    public function startProcessesBundle(Collection $bundles): void
     {
         $bundles->transform(function (Collection $bundle) {
             return $this->validateBundle($bundle);
@@ -252,7 +252,7 @@ class ProcessManager
 
         // Count up all of the processes
         $bundles->each(function ($bundle) use (&$total_processes) {
-            $total_processes = $total_processes + $bundle->count();
+            $total_processes += $bundle->count();
         });
 
         // Set the "process_index" property for each

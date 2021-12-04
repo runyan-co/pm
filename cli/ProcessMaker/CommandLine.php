@@ -10,16 +10,11 @@ class CommandLine
 {
     private $progress;
 
-    private $timing;
+    private $time;
 
     public function __construct()
     {
-        $this->timing = microtime(true);
-    }
-
-    public function __destruct()
-    {
-        $this->timing = $this->timing();
+        $this->time = microtime(true);
     }
 
     /**
@@ -30,7 +25,19 @@ class CommandLine
      */
     public function timing(): string
     {
-        return round(abs($this->timing - microtime(true)), 2) . ' seconds';
+        $seconds = round(abs($this->time - microtime(true)), 2);
+        $minutes = round($seconds / 60, 2);
+        $hours = round($minutes / 60, 2);
+
+        if ($hours >= 1.00) {
+            return "$hours hours";
+        }
+
+        if ($minutes >= 1.00) {
+            return "$minutes minutes";
+        }
+
+        return "$seconds seconds";
     }
 
     /**
@@ -78,14 +85,16 @@ class CommandLine
      * Create a ProgressBar bound to this class instance
      *
      * @param  int  $count
+     * @param  string  $type
      */
-    private function createProgressBar(int $count)
+    public function createProgressBar(int $count, string $type = 'minimal'): void
     {
         $this->progress = new ProgressBar(new ConsoleOutput, $count);
 
+        ProgressBar::setFormatDefinition('message', '<info>%message%</info> (%percent%%)');
         ProgressBar::setFormatDefinition('minimal', 'Progress: %percent%%');
 
-        $this->progress->setFormat('minimal');
+        $this->progress->setFormat($type);
         $this->progress->setRedrawFrequency(25);
         $this->progress->minSecondsBetweenRedraws(0.025);
         $this->progress->maxSecondsBetweenRedraws(0.05);
