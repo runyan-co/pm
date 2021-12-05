@@ -20,6 +20,16 @@ if (!defined('CODEBASE_PATH')) {
 }
 
 /**
+ * @param  string  $output
+ * @param  int  $exitCode
+ *
+ * @return string
+ */
+function warningThenExit(string $output, int $exitCode = 0): string {
+    return warning($output) . exit($exitCode);
+}
+
+/**
  * Resolve the given class from the container.
  *
  * @param  string  $class
@@ -27,8 +37,7 @@ if (!defined('CODEBASE_PATH')) {
  * @return mixed
  * @throws \Illuminate\Contracts\Container\BindingResolutionException
  */
-function resolve(string $class)
-{
+function resolve(string $class) {
     return Container::getInstance()->make($class);
 }
 
@@ -40,8 +49,7 @@ function resolve(string $class)
  *
  * @return void
  */
-function swap(string $class, $instance)
-{
+function swap(string $class, $instance) {
     Container::getInstance()->instance($class, $instance);
 }
 
@@ -62,8 +70,7 @@ function user() {
  * @return void
  * @throws \Exception
  */
-function should_be_sudo()
-{
+function should_be_sudo() {
     if (!isset($_SERVER['SUDO_USER'])) {
         throw new Exception('This command must be run with sudo.');
     }
@@ -76,8 +83,7 @@ function should_be_sudo()
  *
  * @return void
  */
-function info(string $output)
-{
+function info(string $output) {
     output('<info>'.$output.'</info>');
 }
 
@@ -88,8 +94,7 @@ function info(string $output)
  *
  * @return void
  */
-function warning(string $output)
-{
+function warning(string $output) {
     output('<fg=red>' . $output . '</>');
 }
 
@@ -100,12 +105,9 @@ function warning(string $output)
  * @param array $rows
  * @return void
  */
-function table(array $headers = [], array $rows = [])
-{
+function table(array $headers = [], array $rows = [])  {
     $table = new Table(new ConsoleOutput);
-
     $table->setHeaders($headers)->setRows($rows);
-
     $table->render();
 }
 
@@ -116,8 +118,7 @@ function table(array $headers = [], array $rows = [])
  *
  * @return void
  */
-function output(string $output)
-{
+function output(string $output) {
     if (isset($_ENV['APP_ENV']) && $_ENV['APP_ENV'] === 'testing') {
         return;
     }

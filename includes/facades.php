@@ -11,7 +11,7 @@ class Facade
      */
     public static function containerKey(): string
     {
-        return 'ProcessMaker\\Cli\\'.basename(str_replace('\\', '/', get_called_class()));
+        return 'ProcessMaker\\Cli\\'.basename(str_replace('\\', '/', static::class));
     }
 
     /**
@@ -31,10 +31,37 @@ class Facade
     }
 }
 
+/**
+ * @see \ProcessMaker\Cli\CommandLine
+ */
 class CommandLine extends Facade {}
+
+/**
+ * @see \ProcessMaker\Cli\FileSystem
+ */
 class FileSystem extends Facade {}
+
+/**
+ * @see \ProcessMaker\Cli\Packages
+ */
 class Packages extends Facade {}
+
+/**
+ * @see \ProcessMaker\Cli\Install
+ */
 class Install extends Facade {}
+
+/**
+ * @see \ProcessMaker\Cli\ProcessManager
+ */
 class ProcessManager extends Facade {}
+
+/**
+ * @see \ProcessMaker\Cli\Composer
+ */
 class Composer extends Facade {}
+
+/**
+ * @see \ProcessMaker\Cli\Git
+ */
 class Git extends Facade {}

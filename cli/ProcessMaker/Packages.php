@@ -2,7 +2,10 @@
 
 namespace ProcessMaker\Cli;
 
-use \Exception, \LogicException, \DomainException;
+use Exception;
+use LogicException;
+use DomainException;
+use RuntimeException;
 use \Git as GitFacade;
 use \Composer as ComposerFacade;
 use \FileSystem as FileSystemFacade;
@@ -103,7 +106,7 @@ class Packages
             // We want just the package names for now
             $supported_packages = array_keys(get_object_vars($composer_json->extra->processmaker->enterprise));
         } catch (Exception $exception) {
-            return warning('Enterprise packages not found in processmaker/packages composer.json');
+            throw new LogicException('Enterprise packages not found in processmaker/packages composer.json');
         }
 
         if (!$enterpriseOnly) {
@@ -122,7 +125,9 @@ class Packages
                 || $package === 'packages';
         });
 
-        // Prepend the removed packages
+        // Prepend the removed packages so they're installed
+        // first, assuming the returned order is relied on
+        // for installation
         return $supported_packages->prepend('connector-send-email')
                                   ->prepend('docker-executor-node-ssr')
                                   ->prepend('packages')
@@ -139,7 +144,7 @@ class Packages
     {
         $name = Str::replace('processmaker/', '', $name);
 
-        if ($this->packageExists($name) && !$force) {
+        if (!$force && $this->packageExists($name)) {
             throw new LogicException("Package already exists: processmaker/$name");
         }
 
@@ -149,8 +154,8 @@ class Packages
 
         $command = "git clone https://github.com/ProcessMaker/$name";
 
-        CommandLineFacade::runAsUser($command, function ($code, $out) use ($name) {
-            warning("Failed to clone $name:"); output($out);
+        $output = CommandLineFacade::runAsUser($command, function ($code, $out) use ($name) {
+            throw new RuntimeException("Failed to clone $name: ".PHP_EOL.$out);
         }, $this->package_directory);
 
         return $this->packageExists($name);
@@ -161,9 +166,9 @@ class Packages
      *
      * @param  bool  $force
      *
-     * @return bool
+     * @return array
      */
-    public function cloneAllPackages(bool $force = false): bool
+    public function cloneAllPackages(bool $force = false): array
     {
         // Clear the ProcessMaker packages directory before
         // we start cloning the new ones down
@@ -177,21 +182,10 @@ class Packages
         // to make sure we can reference all official supported
         // ProcessMaker 4 enterprise packages
         if (!$this->packageExists('packages')) {
-            $this->clonePackage('packages');
+             $this->clonePackage('packages');
         }
 
-        // Iterate through the list and attempt to clone them down
-        foreach ($this->getSupportedPackages() as $index => $package) {
-            try {
-                if ($this->clonePackage($package)) {
-                    info("Package $package cloned successfully!");
-                }
-            } catch (Exception $exception) {
-                info($exception->getMessage());
-            }
-        }
-
-        return true;
+        return $this->getSupportedPackages();
     }
 
     /**

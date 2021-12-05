@@ -2,23 +2,29 @@
 
 namespace ProcessMaker\Cli;
 
-use \FileSystem as FileSystemFacade;
 use \CommandLine as CommandLineFacade;
 
 class Install
 {
     public $bin = BREW_PREFIX.'/bin/pm';
 
+    public $files;
+
+    public function __construct(FileSystem $files)
+    {
+        $this->files = $files;
+    }
+
     /**
      * Create the "sudoers.d" entry for running Valet.
      *
      * @return void
      */
-    function createSudoersEntry()
+    public function createSudoersEntry()
     {
-        FileSystemFacade::ensureDirExists('/etc/sudoers.d');
+        $this->ensureDirExists('/etc/sudoers.d');
 
-        FileSystemFacade::put('/etc/sudoers.d/pm', 'Cmnd_Alias PM = '.BREW_PREFIX.'/bin/pm *
+        $this->put('/etc/sudoers.d/pm', 'Cmnd_Alias PM = '.BREW_PREFIX.'/bin/pm *
 %admin ALL=(root) NOPASSWD:SETENV: PM'.PHP_EOL);
     }
 
@@ -27,12 +33,12 @@ class Install
      *
      * @return void
      */
-    function removeSudoersEntry()
+    public function removeSudoersEntry()
     {
         CommandLineFacade::quietly('rm /etc/sudoers.d/pm');
     }
 
-    function symlinkToUsersBin()
+    public function symlinkToUsersBin()
     {
         $this->unlinkFromUsersBin();
 
@@ -44,7 +50,7 @@ class Install
      *
      * @return void
      */
-    function unlinkFromUsersBin()
+    public function unlinkFromUsersBin()
     {
         CommandLineFacade::quietlyAsUser('rm '.$this->bin);
     }
