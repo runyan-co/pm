@@ -71,9 +71,6 @@ $app->command('install-packages [-4|--for_41_develop]', function (InputInterface
         $install_commands = $build_install_commands(true);
     }
 
-    // Keep the user in the loop
-    info('Installing packages...'.PHP_EOL);
-
     // Grab an instance of the CommandLine class
     $cli = resolve(\ProcessMaker\Cli\CommandLine::class);
 

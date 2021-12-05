@@ -66,6 +66,6 @@ class Composer
             throw new RuntimeException("Composer.json not found: $composer_json_file");
         }
 
-        return json_decode(FileSystemFacade::get($composer_json_file));
+        return json_decode(FileSystemFacade::get($composer_json_file), false);
     }
 }

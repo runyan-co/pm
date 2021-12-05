@@ -100,7 +100,7 @@ class Packages
         $branchSwitchResult = GitFacade::switchBranch($defaultBranch, $packages_package_path);
 
         // Find and decode composer.json
-        $composer_json = json_decode(FileSystemFacade::get("$packages_package_path/composer.json"), false);
+        $composer_json = ComposerFacade::getComposerJson($packages_package_path);
 
         try {
             // We want just the package names for now
@@ -376,6 +376,9 @@ class Packages
         $processManager->buildProcessesBundleAndStart($commands);
     }
 
+    /**
+     * @return void
+     */
     public function outputPackagesTable()
     {
         $table = [];
@@ -492,6 +495,10 @@ class Packages
             // Filter out any not on the 4.1-develop branch
             $enterprise_packages = $enterprise_packages->reject(function ($package) {
                 if ($package === 'docker-executor-node-ssr') {
+                    return false;
+                }
+
+                if ($package === 'packages') {
                     return false;
                 }
 
