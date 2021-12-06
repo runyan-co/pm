@@ -83,6 +83,11 @@ class Packages
         return $this->getPackage($name)['path'];
     }
 
+    /**
+     * @param  bool  $enterpriseOnly
+     *
+     * @return array
+     */
     public function getSupportedPackages(bool $enterpriseOnly = false): array
     {
         if (!$this->packageExists('packages')) {
@@ -492,13 +497,10 @@ class Packages
         $enterprise_packages = new Collection($this->getSupportedPackages(true));
 
         if ($for_41_develop) {
-            // Filter out any not on the 4.1-develop branch
+            // Filter out any packages not on the 4.1-develop
+            // branch which aren't compatible with 4.1
             $enterprise_packages = $enterprise_packages->reject(function ($package) {
                 if ($package === 'docker-executor-node-ssr') {
-                    return false;
-                }
-
-                if ($package === 'packages') {
                     return false;
                 }
 
