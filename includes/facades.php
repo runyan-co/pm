@@ -65,3 +65,8 @@ class Composer extends Facade {}
  * @see \ProcessMaker\Cli\Git
  */
 class Git extends Facade {}
+
+/**
+ * @see \ProcessMaker\Cli\Configuration
+ */
+class Configuration extends Facade {}

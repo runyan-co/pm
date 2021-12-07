@@ -15,6 +15,7 @@
     "require": {
         "php": ">=7.2",
         "ext-json": "*",
+        "ext-posix": "*",
         "illuminate/support": "^8.73",
         "illuminate/container": "^8.73",
         "mnapoli/silly": "^1.7",

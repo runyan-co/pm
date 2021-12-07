@@ -2,6 +2,7 @@
 
 namespace ProcessMaker\Cli;
 
+use RuntimeException;
 use \CommandLine as CommandLineFacade;
 
 class FileSystem
@@ -50,9 +51,11 @@ class FileSystem
      *
      * @return void
      */
-    public function mkdir(string $path, string $owner = null, int $mode = 0755)
+    public function mkdir(string $path, string $owner = null, int $mode = 0755): void
     {
-        mkdir($path, $mode, true);
+        if (!mkdir($path, $mode, true) && ! is_dir($path)) {
+            throw new RuntimeException(sprintf('Directory "%s" was not created', $path));
+        }
 
         if ($owner) {
             $this->chown($path, $owner);
@@ -70,7 +73,7 @@ class FileSystem
      */
     public function ensureDirExists(string $path, string $owner = null, int $mode = 0755)
     {
-        if (! $this->isDir($path)) {
+        if (!$this->isDir($path)) {
             $this->mkdir($path, $owner, $mode);
         }
     }

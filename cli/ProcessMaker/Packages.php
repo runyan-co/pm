@@ -382,9 +382,9 @@ class Packages
     }
 
     /**
-     * @return void
+     * @return array
      */
-    public function outputPackagesTable()
+    public function getPackagesTableData(): array
     {
         $table = [];
 
@@ -404,9 +404,7 @@ class Packages
             ];
         }
 
-        output(PHP_EOL);
-
-        table(['Name', 'Version', 'Branch', 'Commit Hash'], $table);
+        return $table;
     }
 
     /**

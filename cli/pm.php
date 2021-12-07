@@ -15,8 +15,9 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Question\ConfirmationQuestion;
 use function ProcessMaker\Cli\info;
-use function ProcessMaker\Cli\warning;
+use function ProcessMaker\Cli\table;
 use function ProcessMaker\Cli\output;
+use function ProcessMaker\Cli\warning;
 use function ProcessMaker\Cli\resolve;
 use function ProcessMaker\Cli\warningThenExit;
 
@@ -92,10 +93,11 @@ $app->command('install-packages [-4|--for_41_develop]', function (InputInterface
             $cli->getProgress()->advance();
 
             try {
-                $output = $cli->runAsUser($command, static function ($exitCode, $output) {
-                    throw new RuntimeException($output);
+                $command_output = $cli->runAsUser($command, static function ($exitCode, $out) {
+                    throw new RuntimeException($out);
                 }, CODEBASE_PATH);
             } catch (RuntimeException $exception) {
+
                 $cli->getProgress()->clear();
 
                 output("<fg=red>Command Failed:</> $command");
@@ -116,7 +118,7 @@ $app->command('install-packages [-4|--for_41_develop]', function (InputInterface
             $cli->getProgress()->clear();
 
             output("<info>Command Success:</info> $command");
-            output($output);
+            output($command_output);
 
             $cli->getProgress()->display();
         }
@@ -144,7 +146,9 @@ $app->command('install-packages [-4|--for_41_develop]', function (InputInterface
  * -------------------------------------------------+
  */
 $app->command('packages', function () {
-    Packages::outputPackagesTable();
+
+	table(['Name', 'Version', 'Branch', 'Commit Hash'], Packages::getPackagesTableData());
+
 })->descriptions('Display the current version, branch, and names of known local packages');
 
 /*
@@ -211,5 +215,29 @@ $app->command('trust [--off]', function ($off) {
     info('ProcessMaker CLI tool added to sudoers file.');
 
 })->descriptions('Adds the pm cli tool to the sudoers file.');
+
+/*
+ * -------------------------------------------------+
+ * |                                                |
+ * |    Command: Install Cli                        |
+ * |                                                |
+ * -------------------------------------------------+
+ */
+$app->command('install-cli', function (InputInterface $input, OutputInterface $output) {
+
+	if (FileSystem::isDir(PM_HOME_PATH)) {
+        warningThenExit('Already installed.');
+	}
+
+    $helper = $this->getHelperSet()->get('question');
+    $question = new ConfirmationQuestion('<comment>Note: This command self-installs this tool.</comment> "No" to abort or "Yes" to proceed: ', false);
+
+    if (false === $helper->ask($input, $output, $question)) {
+        warningThenExit('Installation aborted.');
+    }
+
+	Configuration::install();
+
+});
 
 $app->run();

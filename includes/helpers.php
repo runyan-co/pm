@@ -11,6 +11,10 @@ if (!defined('BREW_PREFIX')) {
     define('BREW_PREFIX', (new CommandLine())->runAsUser('printf $(brew --prefix)'));
 }
 
+if (!defined('PM_HOME_PATH')) {
+    define('PM_HOME_PATH', $_SERVER['HOME'] . '/.config/pm');
+}
+
 if (!defined('USER_HOME')) {
     define('USER_HOME', getenv('HOME'));
 }
