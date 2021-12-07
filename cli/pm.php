@@ -95,7 +95,7 @@ $app->command('install-packages [-4|--for_41_develop]', function (InputInterface
             try {
                 $command_output = $cli->runAsUser($command, static function ($exitCode, $out) {
                     throw new RuntimeException($out);
-                }, CODEBASE_PATH);
+                }, Config::codebasePath());
             } catch (RuntimeException $exception) {
 
                 $cli->getProgress()->clear();
@@ -236,8 +236,18 @@ $app->command('install-cli', function (InputInterface $input, OutputInterface $o
         warningThenExit('Installation aborted.');
     }
 
-	Configuration::install();
-
+	Install::install();
+});
+    
+/*
+ * -------------------------------------------------+
+ * |                                                |
+ * |    Command: Install Packages CI                |
+ * |                                                |
+ * -------------------------------------------------+
+ */
+$app->command('install-packages-ci', function() {
+    PackagesCi::install();
 });
 
 $app->run();

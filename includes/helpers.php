@@ -19,10 +19,6 @@ if (!defined('USER_HOME')) {
     define('USER_HOME', getenv('HOME'));
 }
 
-if (!defined('CODEBASE_PATH')) {
-    define('CODEBASE_PATH', USER_HOME.'/code/processmaker');
-}
-
 /**
  * @param  string  $output
  * @param  int  $exitCode

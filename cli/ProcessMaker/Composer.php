@@ -8,6 +8,7 @@ use \Git as GitFacade;
 use \Packages as PackagesFacade;
 use \FileSystem as FileSystemFacade;
 use \CommandLine as CommandLineFacade;
+use \Config as ConfigFacade;
 use Illuminate\Support\Str;
 use Illuminate\Support\Collection;
 
@@ -35,5 +36,20 @@ class Composer
         }
 
         return json_decode(FileSystemFacade::get($composer_json_file), false);
+    }
+
+    public function addRepositoryPath()
+    {
+        $packagesPath = ConfigFacade::packagesPath();
+        CommandLineFacade::runCommand("composer config repositories.pm4-packages path ${packagesPath}/*", function($code, $output) {
+            throw new \Exception($output);
+        }, ConfigFacade::codebasePath());
+    }
+
+    public function require($packages)
+    {
+        CommandLineFacade::runCommand("composer require $packages", function($code, $output) {
+            throw new \Exception($output);
+        }, ConfigFacade::codebasePath());
     }
 }
