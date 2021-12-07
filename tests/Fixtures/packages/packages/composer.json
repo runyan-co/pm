@@ -1,0 +1,11 @@
+{
+    "extra": {
+        "processmaker": {
+            "enterprise": {
+                "packages": "^0",
+                "some-package": "^1.2.3",
+                "other-package": "^4.5.6"
+            }
+        }
+    }
+}

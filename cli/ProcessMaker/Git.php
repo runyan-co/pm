@@ -92,4 +92,13 @@ class Git
 
         return Str::replace([PHP_EOL, "\n"], '', $switched);
     }
+
+    public function clone(string $package, string $path)
+    {
+        $token = getenv('GITHUB_TOKEN');
+        $cmd = "git clone https://${token}@github.com/processmaker/${package}";
+        CommandLineFacade::runCommand($cmd, function($code, $output) { 
+            throw new RuntimeException($output);
+        }, $path);
+    }
 }

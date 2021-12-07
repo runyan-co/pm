@@ -10,19 +10,13 @@ use \Git as GitFacade;
 use \Composer as ComposerFacade;
 use \FileSystem as FileSystemFacade;
 use \CommandLine as CommandLineFacade;
+use \Config as ConfigFacade;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
 class Packages
 {
     public $cli, $files, $composer;
-
-    /**
-     * Where to find all local copies of supported packages
-     *
-     * @var string
-     */
-    public $package_directory = USER_HOME.'/packages/composer/processmaker';
 
     /**
      * Packages that are required by processmaker/processmaker,
@@ -37,23 +31,6 @@ class Packages
         'docker-executor-php',
         'docker-executor-node'
     ];
-
-    /**
-     * Get the root directory where all local
-     * composer packages are stored
-     *
-     * @param  string|null  $package_directory
-     *
-     * @return bool
-     */
-    public function setPackageDirectory(string $package_directory): bool
-    {
-        if (FileSystemFacade::isDir($package_directory)) {
-            $this->package_directory = $package_directory;
-        }
-
-        return FileSystemFacade::isDir($this->package_directory);
-    }
 
     /**
      * @param  string  $name
@@ -154,7 +131,7 @@ class Packages
         }
 
         if ($force) {
-            FileSystemFacade::rmdir($this->package_directory."/$name");
+            FileSystemFacade::rmdir(ConfigFacade::packagesPath()."/$name");
         }
 
         $command = "git clone https://github.com/ProcessMaker/$name";
@@ -217,13 +194,13 @@ class Packages
     public function getPackagesListFromDirectory(string $package_directory = null): array
     {
         if (!is_string($package_directory)) {
-            $package_directory = $this->package_directory;
+            $package_directory = ConfigFacade::packagesPath();
         }
 
-        return array_filter(FileSystemFacade::scandir($package_directory), function ($dir) {
+        return array_filter(FileSystemFacade::scandir($package_directory), function ($dir) use($package_directory) {
 
             // Set the absolute path to the file or directory
-            $dir = $this->package_directory.'/'.$dir;
+            $dir = $package_directory.'/'.$dir;
 
             // Filter out any non-directory files
             return FileSystemFacade::isDir($dir) && !is_file($dir);
@@ -241,7 +218,7 @@ class Packages
         $packages = array_map(function ($package_name) {
             return [
                 'name' => $package_name,
-                'path' => "$this->package_directory/$package_name"
+                'path' => ConfigFacade::packagesPath() . "/$package_name"
             ];
         }, $this->getPackagesListFromDirectory());
 
@@ -475,8 +452,8 @@ class Packages
      */
     public function buildPackageInstallCommands(bool $for_41_develop = false, bool $force = false): Collection
     {
-        if (!FileSystemFacade::isDir(CODEBASE_PATH)) {
-            throw new LogicException('Could not find ProcessMaker codebase: '.CODEBASE_PATH);
+        if (!FileSystemFacade::isDir(ConfigFacade::codebasePath())) {
+            throw new LogicException('Could not find ProcessMaker codebase: '. ConfigFacade::codebasePath());
         }
 
         // Find out which branch to switch to in the local
@@ -484,7 +461,7 @@ class Packages
         $branch = $for_41_develop ? '4.1-develop' : 'develop';
 
         // Find out which branch we're on
-        $current_branch = GitFacade::getCurrentBranchName(CODEBASE_PATH);
+        $current_branch = GitFacade::getCurrentBranchName(ConfigFacade::codebasePath());
 
         // Make sure we're on the right branch
         if ($current_branch !== $branch && ! $force) {
