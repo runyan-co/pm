@@ -20,11 +20,11 @@ class Install
      *
      * @return void
      */
-    public function createSudoersEntry()
+    public function createSudoersEntry(): void
     {
-        $this->ensureDirExists('/etc/sudoers.d');
+        $this->files->ensureDirExists('/etc/sudoers.d');
 
-        $this->put('/etc/sudoers.d/pm', 'Cmnd_Alias PM = '.BREW_PREFIX.'/bin/pm *
+        $this->files->put('/etc/sudoers.d/pm', 'Cmnd_Alias PM = '.BREW_PREFIX.'/bin/pm *
 %admin ALL=(root) NOPASSWD:SETENV: PM'.PHP_EOL);
     }
 
@@ -38,7 +38,7 @@ class Install
         CommandLineFacade::quietly('rm /etc/sudoers.d/pm');
     }
 
-    public function symlinkToUsersBin()
+    public function symlinkToUsersBin(): void
     {
         $this->unlinkFromUsersBin();
 
@@ -50,7 +50,7 @@ class Install
      *
      * @return void
      */
-    public function unlinkFromUsersBin()
+    public function unlinkFromUsersBin(): void
     {
         CommandLineFacade::quietlyAsUser('rm '.$this->bin);
     }
@@ -58,23 +58,27 @@ class Install
     /**
      * Install the Valet configuration file.
      *
+     * @param  string  $codebase_path
+     * @param  string  $packages_path
+     *
      * @return void
      */
-    public function install(): void
+    public function install(string $codebase_path, string $packages_path): void
     {
+        $this->unlinkFromUsersBin();
+
+        $this->symlinkToUsersBin();
+
+        $this->createSudoersEntry();
+
         $this->createConfigurationDirectory();
 
-        $this->createConfigurationFile();
+        $this->write([
+            'codebase_path' => $codebase_path,
+            'packages_path' => $packages_path
+        ]);
 
         $this->files->chown($this->path(), user());
-    }
-
-    public function createConfigurationFile(): void
-    {
-        $this->write([
-            'codebase_path' => '',
-            'packages_path' => ''
-        ]);
     }
 
     /**

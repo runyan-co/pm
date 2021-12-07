@@ -68,7 +68,7 @@ class Packages
     public function getSupportedPackages(bool $enterpriseOnly = false): array
     {
         if (!$this->packageExists('packages')) {
-            throw new LogicException('"processmaker/packages" composer meta-package not found.');
+            $this->clonePackage('packages');
         }
 
         // We need the packages meta-package to get the
@@ -138,7 +138,7 @@ class Packages
 
         $output = CommandLineFacade::runAsUser($command, function ($code, $out) use ($name) {
             throw new RuntimeException("Failed to clone $name: ".PHP_EOL.$out);
-        }, $this->package_directory);
+        }, ConfigFacade::packagesPath());
 
         return $this->packageExists($name);
     }
