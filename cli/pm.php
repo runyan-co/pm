@@ -26,6 +26,17 @@ Container::setInstance(new Container);
 
 $app = new Application('ProcessMaker CLI Tool', '0.5.0');
 
+/*
+ * -------------------------------------------------+
+ * |                                                |
+ * |    Command: Install Packages CI                |
+ * |                                                |
+ * -------------------------------------------------+
+ */
+$app->command('install-packages-ci', function() {
+    PackagesCi::install();
+});
+
 if (!FileSystem::isDir(PM_HOME_PATH)) {
     /*
 	 * -------------------------------------------------+
@@ -88,17 +99,6 @@ if (!FileSystem::isDir(PM_HOME_PATH)) {
     })->descriptions('Runs the installation process for this tool. Necessary before other commands will appear.');
 
 } else {
-
-    /*
-	 * -------------------------------------------------+
-	 * |                                                |
-	 * |    Command: Install Packages CI                |
-	 * |                                                |
-	 * -------------------------------------------------+
-	 */
-    $app->command('install-packages-ci', function() {
-        PackagesCi::install();
-    });
 
     /*
 	 * -------------------------------------------------+
