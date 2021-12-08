@@ -30,11 +30,24 @@ class CommandLine
         $hours = round($minutes / 60, 2);
 
         if ($hours >= 1.00) {
-            return "$hours hours";
+            $minutes = $hours - round($hours);
+            $minutes = round($minutes * 60);
+            $hours = round($hours);
+            $hours_text = $hours === 1.00 ? 'hour' : 'hours';
+            $minutes_text = $minutes === 1.00 ? 'minute' : 'minutes';
+
+            return "$hours $hours_text and $minutes $minutes_text";
         }
 
         if ($minutes >= 1.00) {
-            return "$minutes minutes";
+            $seconds = $minutes - round($minutes);
+            $seconds = round($seconds * 60);
+            $minutes = round($minutes);
+
+            $seconds_text = $seconds === 1.00 ? 'second' : 'seconds';
+            $minutes_text = $minutes === 1.00 ? 'minute' : 'minutes';
+
+            return "$minutes $minutes_text and $seconds $seconds_text";
         }
 
         return "$seconds seconds";
