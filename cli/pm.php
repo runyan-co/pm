@@ -103,6 +103,61 @@ if (!FileSystem::isDir(PM_HOME_PATH)) {
     /*
 	 * -------------------------------------------------+
 	 * |                                                |
+	 * |    Command: Supervisor:Status                  |
+	 * |                                                |
+	 * -------------------------------------------------+
+	 */
+    $app->command('supervisor:status', function () {
+        info(Supervisor::available()
+            ? 'Supervisor is running'
+            : 'Supervisor is not running or available');
+    })->descriptions('Get supervisor\'s running status');
+
+    /*
+	 * -------------------------------------------------+
+	 * |                                                |
+	 * |    Command: Supervisor:Stop                    |
+	 * |                                                |
+	 * -------------------------------------------------+
+	 */
+    $app->command('supervisor:stop [process]', function ($process = null) {
+        try {
+            if (Supervisor::stop($process)) {
+                info('Supervisor process(es) successfully stopped.');
+            } else {
+                warning("Process(es) were already stopped or an error occurred while attempting to stop them.");
+            }
+        } catch (RuntimeException $exception) {
+            output("<fg=red>Problem stopping process(es): </>".PHP_EOL.$exception->getMessage());
+        }
+    })->descriptions('Attempt to stop the supervisor process by name if available, otherwise it stops all processes', [
+			'process' => 'The name of the supervisor process to start or restart'
+    ]);
+
+    /*
+	 * -------------------------------------------------+
+	 * |                                                |
+	 * |    Command: Supervisor:Restart                 |
+	 * |                                                |
+	 * -------------------------------------------------+
+	 */
+	    $app->command('supervisor:restart [process]', function ($process = null) {
+	       try {
+			   if (Supervisor::restart($process)) {
+				   info('Supervisor process(es) successfully restarted.');
+			   } else {
+                   warning("Process(es) could not be restarted.");
+			   }
+	       } catch (RuntimeException $exception) {
+               output("<fg=red>Problem restarting process(es): </>".PHP_EOL.$exception->getMessage());
+	       }
+	    })->descriptions('Attempt to start/restart the supervisor process by name if available, otherwise it restarts all processes', [
+            'process' => 'The name of the supervisor process to start or restart'
+        ]);
+
+    /*
+	 * -------------------------------------------------+
+	 * |                                                |
 	 * |    Command: Install Packages                   |
 	 * |                                                |
 	 * -------------------------------------------------+
