@@ -75,3 +75,8 @@ class PackagesCi extends Facade {}
  * @see \ProcessMaker\Cli\Config
  */
 class Config extends Facade {}
+
+/**
+ * @see \ProcessMaker\Cli\Supervisor
+ */
+class Supervisor extends Facade {}
