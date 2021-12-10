@@ -495,6 +495,6 @@ class Packages
                 PHP_BINARY." artisan $package:install --no-interaction",
                 PHP_BINARY." artisan vendor:publish --tag=$package --no-interaction"
             ]);
-        });
+        })->put('horizon', new Collection([PHP_BINARY.' artisan horizon:terminate']));
     }
 }
