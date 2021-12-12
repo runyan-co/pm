@@ -3,11 +3,17 @@
 namespace ProcessMaker\Cli;
 
 use RuntimeException;
-use \CommandLine as Cli;
 use Illuminate\Support\Str;
 
 class Supervisor
 {
+    protected $cli;
+
+    public function __construct(CommandLine $cli)
+    {
+        $this->cli = $cli;
+    }
+
     /**
      * Checks is supervisord is running and available to receive commands
      *
@@ -16,12 +22,7 @@ class Supervisor
     public function running(): bool
     {
         try {
-            return is_string(Cli::runAsUser('supervisorctl status', function ($exitCode, $output) {
-                // Even if one ore more of the processes have failed to
-                // start or were incorrectly terminated, all we want to
-                // know with this method is whether or not supervisor is
-                // running at all, so as long as we receive output that
-                // doesn't include a socket connection failure, we're set
+            return is_string($this->cli->run('supervisorctl status', function ($exitCode, $output) {
                 if (Str::contains($output, 'refused connection')) {
                     throw new RuntimeException();
                 }
@@ -53,7 +54,7 @@ class Supervisor
 
         $process = $process ?? 'all';
 
-        return is_string(Cli::runAsUser("supervisorctl stop $process", function ($exitCode, $output) {
+        return is_string($this->cli->run("supervisorctl stop $process", function ($exitCode, $output) {
             throw new RuntimeException($output);
         }));
     }
@@ -76,7 +77,7 @@ class Supervisor
 
         $process = $process ?? 'all';
 
-        $restarted = Cli::runAsUser("supervisorctl restart $process", function ($exitCode, $output) {
+        $restarted = $this->cli->run("supervisorctl restart $process", function ($exitCode, $output) {
             throw new RuntimeException($output);
         });
 

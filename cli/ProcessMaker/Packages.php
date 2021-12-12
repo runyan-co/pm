@@ -8,8 +8,6 @@ use DomainException;
 use RuntimeException;
 use \Git as GitFacade;
 use \Composer as ComposerFacade;
-use \FileSystem as FileSystemFacade;
-use \CommandLine as CommandLineFacade;
 use \Config as ConfigFacade;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
@@ -31,6 +29,12 @@ class Packages
         'docker-executor-php',
         'docker-executor-node'
     ];
+
+    public function __construct(CommandLine $cli, FileSystem $files)
+    {
+        $this->cli = $cli;
+        $this->files = $files;
+    }
 
     /**
      * @param  string  $name
@@ -131,12 +135,12 @@ class Packages
         }
 
         if ($force) {
-            FileSystemFacade::rmdir(ConfigFacade::packagesPath()."/$name");
+            $this->files->rmdir(ConfigFacade::packagesPath()."/$name");
         }
 
         $command = "git clone https://github.com/ProcessMaker/$name";
 
-        $output = CommandLineFacade::runAsUser($command, function ($code, $out) use ($name) {
+        $output = $this->cli->run($command, function ($code, $out) use ($name) {
             throw new RuntimeException("Failed to clone $name: ".PHP_EOL.$out);
         }, ConfigFacade::packagesPath());
 
@@ -156,7 +160,7 @@ class Packages
         // we start cloning the new ones down
         if ($force) {
             foreach ($this->getPackages() as $package) {
-                FileSystemFacade::rmdir($package['path']);
+                $this->files->rmdir($package['path']);
             }
         }
 
@@ -197,13 +201,13 @@ class Packages
             $package_directory = ConfigFacade::packagesPath();
         }
 
-        return array_filter(FileSystemFacade::scandir($package_directory), function ($dir) use($package_directory) {
+        return array_filter($this->files->scandir($package_directory), function ($dir) use($package_directory) {
 
             // Set the absolute path to the file or directory
             $dir = $package_directory.'/'.$dir;
 
             // Filter out any non-directory files
-            return FileSystemFacade::isDir($dir) && !is_file($dir);
+            return $this->files->isDir($dir) && !is_file($dir);
         });
     }
 
@@ -250,12 +254,12 @@ class Packages
      */
     public function getCurrentGitBranchName(string $path): string
     {
-        if (!FileSystemFacade::isDir($path)) {
+        if (!$this->files->isDir($path)) {
             return '...';
         }
 
         // Run this command and get the current git branch
-        $branch = CommandLineFacade::runAsUser('git rev-parse --abbrev-ref HEAD', null, $path);
+        $branch = $this->cli->run('git rev-parse --abbrev-ref HEAD', null, $path);
 
         // Remove unnecessary end of line character(s)
         return Str::replace(["\n", PHP_EOL], "", $branch);
@@ -317,8 +321,11 @@ class Packages
                 'git pull --force',
             ];
 
-            $commands[$package['name']] = array_map(function ($command) use ($package) {
-                return CommandLineFacade::transformCommandToRunAsUser($command, $package['path']);
+            $name = $package['name'];
+            $path = $package['path'];
+
+            $commands[$name] = array_map(static function ($command) use ($path) {
+                return "cd $path && $command";
             }, $package_commands);
         }
 
@@ -452,7 +459,7 @@ class Packages
      */
     public function buildPackageInstallCommands(bool $for_41_develop = false, bool $force = false): Collection
     {
-        if (!FileSystemFacade::isDir(ConfigFacade::codebasePath())) {
+        if (!$this->files->isDir(ConfigFacade::codebasePath())) {
             throw new LogicException('Could not find ProcessMaker codebase: '. ConfigFacade::codebasePath());
         }
 

@@ -2,18 +2,22 @@
 
 namespace ProcessMaker\Cli;
 
-use LogicException, RuntimeException;
-use DomainException;
-use \Git as GitFacade;
-use \Packages as PackagesFacade;
-use \FileSystem as FileSystemFacade;
-use \CommandLine as CommandLineFacade;
+use Exception;
+use LogicException;
+use RuntimeException;
 use \Config as ConfigFacade;
 use Illuminate\Support\Str;
-use Illuminate\Support\Collection;
 
 class Composer
 {
+    public $cli, $files;
+
+    public function __construct(CommandLine $cli, FileSystem $files)
+    {
+        $this->cli = $cli;
+        $this->files = $files;
+    }
+
     /**
      * @param  string  $path_to_composer_json
      *
@@ -21,7 +25,7 @@ class Composer
      */
     public function getComposerJson(string $path_to_composer_json)
     {
-        if (!FileSystemFacade::isDir($path_to_composer_json)) {
+        if (!$this->files->isDir($path_to_composer_json)) {
             throw new LogicException("Path to composer.json not found: $path_to_composer_json");
         }
 
@@ -31,25 +35,35 @@ class Composer
 
         $composer_json_file = "$path_to_composer_json/composer.json";
 
-        if (!FileSystemFacade::exists($composer_json_file)) {
+        if (!$this->files->exists($composer_json_file)) {
             throw new RuntimeException("Composer.json not found: $composer_json_file");
         }
 
-        return json_decode(FileSystemFacade::get($composer_json_file), false);
+        return json_decode($this->files->get($composer_json_file), false);
     }
 
-    public function addRepositoryPath()
+    /**
+     * @return void
+     * @throws \Exception
+     */
+    public function addRepositoryPath(): void
     {
         $packagesPath = ConfigFacade::packagesPath();
-        CommandLineFacade::runCommand("composer config repositories.pm4-packages path ${packagesPath}/*", function($code, $output) {
-            throw new \Exception($output);
+        $this->cli->runCommand("composer config repositories.pm4-packages path ${packagesPath}/*", function($code, $output) {
+            throw new Exception($output);
         }, ConfigFacade::codebasePath());
     }
 
-    public function require($packages)
+    /**
+     * @param $packages
+     *
+     * @return void
+     * @throws \Exception
+     */
+    public function require($packages): void
     {
-        CommandLineFacade::runCommand("composer require $packages", function($code, $output) {
-            throw new \Exception($output);
+        $this->cli->runCommand("composer require $packages", function($code, $output) {
+            throw new Exception($output);
         }, ConfigFacade::codebasePath());
     }
 }

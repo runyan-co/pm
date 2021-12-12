@@ -8,9 +8,7 @@ use Symfony\Component\Console\Output\ConsoleOutput;
 
 class CommandLine
 {
-    private $progress;
-
-    private $time;
+    private $progress, $time;
 
     public function __construct()
     {
@@ -33,10 +31,8 @@ class CommandLine
             $minutes = $hours - round($hours);
             $minutes = round($minutes * 60);
             $hours = round($hours);
-            $hours_text = $hours === 1.00 ? 'hour' : 'hours';
-            $minutes_text = $minutes === 1.00 ? 'minute' : 'minutes';
 
-            return "$hours $hours_text and $minutes $minutes_text";
+            return "$hours h and $minutes m";
         }
 
         if ($minutes >= 1.00) {
@@ -44,13 +40,10 @@ class CommandLine
             $seconds = round($seconds * 60);
             $minutes = round($minutes);
 
-            $seconds_text = $seconds === 1.00 ? 'second' : 'seconds';
-            $minutes_text = $minutes === 1.00 ? 'minute' : 'minutes';
-
-            return "$minutes $minutes_text and $seconds $seconds_text";
+            return "$minutes m and $seconds s";
         }
 
-        return "$seconds seconds";
+        return "$seconds s";
     }
 
     /**
@@ -63,23 +56,6 @@ class CommandLine
     public function quietly(string $command)
     {
         $this->runCommand($command.' > /dev/null 2>&1');
-    }
-
-    /**
-     * Simple global function to run commands.
-     *
-     * @param  string  $command
-     *
-     * @return void
-     */
-    public function quietlyAsUser(string $command)
-    {
-        $this->quietly('sudo -u "'.user().'" '.$command.' > /dev/null 2>&1');
-    }
-
-    public function transformCommandToRunAsUser(string $command, string $path = null): string
-    {
-        return ($path ? 'cd '.$path.' && ' : '').'sudo -u '.user().' '.$command;
     }
 
     /**
@@ -102,7 +78,7 @@ class CommandLine
      */
     public function createProgressBar(int $count, string $type = 'minimal'): void
     {
-        $this->progress = new ProgressBar(new ConsoleOutput, $count);
+        $this->progress = new ProgressBar(new ConsoleOutput(), $count);
 
         ProgressBar::setFormatDefinition('message', '<info>%message%</info> (%percent%%)');
         ProgressBar::setFormatDefinition('minimal', 'Progress: %percent%%');
@@ -120,7 +96,7 @@ class CommandLine
      */
     public function getProgress(int $count = null): ProgressBar
     {
-        if (!$this->progress instanceof ProgressBar) {
+        if (! $this->progress instanceof ProgressBar) {
             $this->createProgressBar($count);
         }
 
@@ -150,23 +126,9 @@ class CommandLine
      *
      * @return string
      */
-    public function runAsUser(string $command, callable $onError = null, string $workingDir = null): string
-    {
-        return $this->runCommand('sudo -u "'.user().'" '.$command, $onError, $workingDir);
-    }
-
-    /**
-     * Run the given command.
-     *
-     * @param  string  $command
-     * @param  callable|null  $onError
-     * @param  string|null  $workingDir
-     *
-     * @return string
-     */
     public function runCommand(string $command, callable $onError = null, string $workingDir = null): string
     {
-        $onError = $onError ? : function () {};
+        $onError = $onError ? : static function () {};
 
         if (method_exists(Process::class, 'fromShellCommandline')) {
             $process = Process::fromShellCommandline($command);
@@ -175,13 +137,12 @@ class CommandLine
         }
 
         if ($workingDir) {
-            if (is_dir($workingDir) && !is_file($workingDir)) {
+            if (is_dir($workingDir) && ! is_file($workingDir)) {
                 $process->setWorkingDirectory($workingDir);
             }
         }
 
         $processOutput = '';
-
         $process->setTimeout(null)->run(function ($type, $line) use (&$processOutput) {
             $processOutput .= $line;
         });
@@ -192,4 +153,5 @@ class CommandLine
 
         return $processOutput;
     }
+
 }

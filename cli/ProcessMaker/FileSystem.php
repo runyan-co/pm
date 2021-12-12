@@ -3,7 +3,7 @@
 namespace ProcessMaker\Cli;
 
 use RuntimeException;
-use \CommandLine as CommandLineFacade;
+use \CommandLine as Cli;
 
 class FileSystem
 {
@@ -32,14 +32,15 @@ class FileSystem
             return false;
         }
 
-        $success = true;
-
-        CommandLineFacade::runAsUser("rm -rf $path",
-            function ($error, $output) use (&$success, $path) {
-                $success = false;
+        try {
+            Cli::run("rm -rf $path", function ($error, $output) use (&$success, $path) {
+                throw new RuntimeException($output);
             });
 
-        return $success;
+            return true;
+        } catch (RuntimeException $exception) {
+            return false;
+        }
     }
 
     /**
@@ -268,7 +269,7 @@ class FileSystem
             $this->unlink($link);
         }
 
-        CommandLineFacade::runAsUser('ln -s '.escapeshellarg($target).' '.escapeshellarg($link));
+        Cli::run('ln -s '.escapeshellarg($target).' '.escapeshellarg($link));
     }
 
     /**

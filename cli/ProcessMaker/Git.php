@@ -2,22 +2,27 @@
 
 namespace ProcessMaker\Cli;
 
-use \LogicException, \RuntimeException;
-use Silly\Command\Command;
-use React\ChildProcess\Process;
-use \CommandLine as CommandLineFacade;
-use \FileSystem as FileSystemFacade;
+use LogicException;
+use RuntimeException;
 use Illuminate\Support\Str;
 
 class Git
 {
-    public function validateGitRepository(string $path)
+    public $cli, $files;
+
+    public function __construct(CommandLine $cli, FileSystem $files)
     {
-        if (!FileSystemFacade::isDir($path)) {
+        $this->cli = $cli;
+        $this->files = $files;
+    }
+
+    public function validateGitRepository(string $path): void
+    {
+        if (!$this->files->isDir($path)) {
             throw new LogicException("Directory to git repository does not exist: $path");
         }
 
-        if (!FileSystemFacade::exists("$path/.git")) {
+        if (!$this->files->exists("$path/.git")) {
             throw new LogicException("Git repository not found in directory: $path");
         }
     }
@@ -33,7 +38,7 @@ class Git
     {
         $this->validateGitRepository($path_to_repo);
 
-        $output = CommandLineFacade::runAsUser('git rev-parse --abbrev-ref HEAD', function ($e, $o) {
+        $output = $this->cli->run('git rev-parse --abbrev-ref HEAD', function ($e, $o) {
             throw new RuntimeException('Error trying to retrieve current git branch name');
         }, $path_to_repo);
 
@@ -49,7 +54,7 @@ class Git
     {
         $this->validateGitRepository($path_to_repo);
 
-        $output = CommandLineFacade::runAsUser('git rev-parse --short HEAD', function ($e, $o) {
+        $output = $this->cli->run('git rev-parse --short HEAD', function ($e, $o) {
             throw new RuntimeException('Error trying to retrieve current git commit hash.');
         }, $path_to_repo);
 
@@ -62,7 +67,7 @@ class Git
 
         $command = "git symbolic-ref refs/remotes/origin/HEAD | sed 's@^refs/remotes/origin/@@'";
 
-        $branch = CommandLineFacade::runAsUser($command, function ($e, $o) {
+        $branch = $this->cli->run($command, function ($e, $o) {
             warning('Could not find default git branch.');
             output($o);
         }, $path);
@@ -82,22 +87,23 @@ class Git
         $this->validateGitRepository($path);
 
         if ($force) {
-            CommandLineFacade::runAsUser('git reset --hard', null, $path);
-            CommandLineFacade::runAsUser('git clean -d -f .', null, $path);
+            $this->cli->run('git reset --hard', null, $path);
+            $this->cli->run('git clean -d -f .', null, $path);
         }
 
-        $switched = CommandLineFacade::runAsUser("git checkout $branchName", function ($e, $o) {
+        $switched = $this->cli->run("git checkout $branchName", function ($e, $o) {
             throw new RuntimeException('Failed to switch branch');
         }, $path);
 
         return Str::replace([PHP_EOL, "\n"], '', $switched);
     }
 
-    public function clone(string $package, string $path)
+    public function clone(string $package, string $path): void
     {
         $token = getenv('GITHUB_TOKEN');
         $cmd = "git clone https://${token}@github.com/processmaker/${package}";
-        CommandLineFacade::runCommand($cmd, function($code, $output) { 
+
+        $this->cli->runCommand($cmd, function($code, $output) {
             throw new RuntimeException($output);
         }, $path);
     }
