@@ -80,3 +80,8 @@ class Config extends Facade {}
  * @see \ProcessMaker\Cli\Supervisor
  */
 class Supervisor extends Facade {}
+
+/**
+ * @see \ProcessMaker\Cli\Reset
+ */
+class Reset extends Facade {}

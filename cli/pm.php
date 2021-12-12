@@ -10,17 +10,16 @@ if (file_exists(__DIR__.'/../vendor/autoload.php')) {
 }
 
 use Silly\Application;
+use Illuminate\Support\Collection;
 use Illuminate\Container\Container;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Question\ConfirmationQuestion;
 use Symfony\Component\Console\Question\Question;
-use function ProcessMaker\Cli\info;
-use function ProcessMaker\Cli\table;
-use function ProcessMaker\Cli\output;
-use function ProcessMaker\Cli\warning;
-use function ProcessMaker\Cli\resolve;
-use function ProcessMaker\Cli\warningThenExit;
+
+use function ProcessMaker\Cli\ {
+    info, table, output, resolve, warning, warningThenExit,
+};
 
 Container::setInstance(new Container);
 
@@ -29,11 +28,11 @@ $app = new Application('ProcessMaker CLI Tool', '0.5.0');
 /*
  * -------------------------------------------------+
  * |                                                |
- * |    Command: Install Packages CI                |
+ * |    Command: Ci:Install Packages                |
  * |                                                |
  * -------------------------------------------------+
  */
-$app->command('install-packages-ci', function() {
+$app->command('ci:install-packages', function() {
     PackagesCi::install();
 });
 
@@ -41,11 +40,11 @@ if (!FileSystem::isDir(PM_HOME_PATH)) {
     /*
 	 * -------------------------------------------------+
 	 * |                                                |
-	 * |    Command: Install Cli                        |
+	 * |    Command: Install                            |
 	 * |                                                |
 	 * -------------------------------------------------+
 	 */
-    $app->command('install-cli', function (InputInterface $input, OutputInterface $output) {
+    $app->command('install', function (InputInterface $input, OutputInterface $output) {
 
         // First thing we want to do is ask the user to
         // tell us the absolute path to the core codebase
@@ -108,7 +107,7 @@ if (!FileSystem::isDir(PM_HOME_PATH)) {
 	 * -------------------------------------------------+
 	 */
     $app->command('supervisor:status', function () {
-        info(Supervisor::available()
+        info(Supervisor::running()
             ? 'Supervisor is running'
             : 'Supervisor is not running or available');
     })->descriptions('Get supervisor\'s running status');
@@ -131,7 +130,7 @@ if (!FileSystem::isDir(PM_HOME_PATH)) {
             output("<fg=red>Problem stopping process(es): </>".PHP_EOL.$exception->getMessage());
         }
     })->descriptions('Attempt to stop the supervisor process by name if available, otherwise it stops all processes', [
-			'process' => 'The name of the supervisor process to start or restart'
+		'process' => 'The name of the supervisor process to start or restart'
     ]);
 
     /*
@@ -156,13 +155,149 @@ if (!FileSystem::isDir(PM_HOME_PATH)) {
         ]);
 
     /*
+	* -------------------------------------------------+
+	* |                                                |
+	* |    Command: Core:Reset                         |
+	* |                                                |
+	* -------------------------------------------------+
+	*/
+	$app->command('core:reset [branch] [-d|--bounce-database', function (InputInterface $input, OutputInterface $output) {
+
+		$branch = $input->getArgument('branch') ?? 'develop';
+		$verbose = $input->getOption('verbose') ?? false;
+
+		// Whether or not we should destroy the MySQL database and then recreate it
+		$bounce_database = $input->getOption('bounce-database') ?? false;
+
+		$helper = $this->getHelperSet()->get('question');
+		$question = new ConfirmationQuestion('<comment>Warning:</comment> This will remove all changes to the core codebase and reset the database. Continue? <info>(yes/no)</info> ', false);
+
+		if (false === $helper->ask($input, $output, $question)) {
+			warningThenExit('Reset aborted.');
+		}
+
+        // Put together the commands necessary
+        // to reset the core codebase
+        $command_set = Reset::buildResetCommands($branch, $bounce_database);
+
+        // Grab an instance of the CommandLine class
+        $cli = resolve(\ProcessMaker\Cli\CommandLine::class);
+
+        // Count up the total number of steps in the reset process
+        $steps = collect($command_set)->flatten()->count();
+
+        // We also need to add an additional step to account for
+        // the step before last of reformatting the .env file which
+        // is done through a class rather than a command execution
+		++$steps;
+
+		// If the .env file exists before resetting, we have to
+		// remove it to allow the artisan install process to work
+        if ($env_file_exists = FileSystem::exists($env = Config::codebasePath().'/.env')) {
+			++$steps;
+        }
+
+        // The steps increase by 2, for example, if supervisor
+        // is running since we need to stop it before executing
+        // the commands, then restart it when were finished
+        if ($supervisor_should_restart = Supervisor::running()) {
+            $steps += 2;
+        }
+
+        // Add a progress bar
+        $cli->createProgressBar($steps, 'message');
+        $cli->getProgress()->setMessage('Starting install...');
+        $cli->getProgress()->start();
+
+		// First, let's stop any supervisor processes
+		// to prevent them from throwing exceptions
+		// or causing other chaos while we do the reset
+		if ($supervisor_should_restart) {
+            $cli->getProgress()->setMessage('Stopping supervisor processes...');
+			Supervisor::stop();
+            $cli->getProgress()->advance();
+		}
+
+		// The 'git clean' command run doesn't affect ignored
+		// files and since .env file is ignored we need to remove
+		// it in advance a // you cannot run the ProcessMaker
+		// artisan install command with it present
+		if ($env_file_exists) {
+            $cli->getProgress()->setMessage('Removing .env file...');
+			FileSystem::unlink($env);
+            $cli->getProgress()->advance();
+		}
+
+		// Iterate through them and execute
+		foreach ($command_set as $type_of_commands => $commands) {
+
+			$cli->getProgress()->setMessage("Running $type_of_commands commands...");
+
+			foreach ($commands as $command) {
+                try {
+                    $out = $cli->runAsUser($command, static function ($exitCode, $out) {
+                        throw new RuntimeException($out);
+                    }, Config::codebasePath());
+                } catch (RuntimeException $exception) {
+
+                    $cli->getProgress()->clear();
+
+                    output("<fg=red>Command Failed:</> $command");
+                    output($exception->getMessage());
+
+                    exit(0);
+                }
+
+                $cli->getProgress()->advance();
+
+                if (!$verbose) {
+                    continue;
+                }
+
+                $cli->getProgress()->clear();
+
+                output("<info>Command Successful:</info> $command");
+                output($out);
+
+                $cli->getProgress()->display();
+			}
+		}
+
+		// Now we need to reformat the .env file so it's
+		// setup properly for a local environment
+        $cli->getProgress()->setMessage('Reformatting .env file...');
+		Reset::formatEnvFile();
+        $cli->getProgress()->advance();
+
+        // If supervisor processes were stopped before
+        // executing the commands, now we can restart them
+        if ($supervisor_should_restart) {
+            $cli->getProgress()->setMessage('Restarting supervisor processes...');
+            Supervisor::restart();
+            $cli->getProgress()->advance();
+        }
+
+		$cli->getProgress()->finish();
+        $cli->getProgress()->clear();
+
+        // See how long it took to run everything
+        $timing = $cli->timing();
+
+        // Output and we're done!
+        output(PHP_EOL."<info>Finished in</info> $timing");
+	})->descriptions('Reset the core codebase, install composer and npm dependencies, builds npm assets', [
+		'branch' => 'Default: \'develop\'. Otherwise will try to switch to the branch name provided.',
+		'--bounce-database' => 'Drops the database the core codebase was using and recreates it'
+	]);
+
+    /*
 	 * -------------------------------------------------+
 	 * |                                                |
-	 * |    Command: Install Packages                   |
+	 * |    Command: Core:Install Packages              |
 	 * |                                                |
 	 * -------------------------------------------------+
 	 */
-    $app->command('install-packages [-4|--for_41_develop]', function (InputInterface $input, OutputInterface $output) {
+    $app->command('core:install-packages [-4|--for_41_develop]', function (InputInterface $input, OutputInterface $output) {
 
         // Indicates if we should install the 4.1-develop
         // versions of each package or the 4.2
@@ -205,12 +340,29 @@ if (!FileSystem::isDir(PM_HOME_PATH)) {
         // Grab an instance of the CommandLine class
         $cli = resolve(\ProcessMaker\Cli\CommandLine::class);
 
-        // Create a progress bar and start it
-        $cli->createProgressBar($install_commands->flatten()->count(), 'message');
+        // Count up the total number of steps
+        $steps = $install_commands->flatten()->count();
 
-        // Set the initial message and start up the progress bar
+        // The steps increase by 2, for example, if supervisor
+        // is running since we need to stop it before executing
+        // the commands, then restart it when were finished
+        if ($supervisor_should_restart = Supervisor::running()) {
+            $steps += 2;
+        }
+
+        // Add a progress bar
+        $cli->createProgressBar($steps, 'message');
         $cli->getProgress()->setMessage('Starting install...');
         $cli->getProgress()->start();
+
+        // First, let's stop any supervisor processes
+        // to prevent them from throwing exceptions
+        // or causing other chaos while we do the reset
+        if ($supervisor_should_restart) {
+            $cli->getProgress()->setMessage('Stopping supervisor processes...');
+            Supervisor::stop();
+            $cli->getProgress()->advance();
+        }
 
         // Iterate through the collection of commands
         foreach ($install_commands as $package => $command_collection) {
@@ -218,9 +370,13 @@ if (!FileSystem::isDir(PM_HOME_PATH)) {
             // Iterate through each command and attempt to run it
             foreach ($command_collection as $command) {
 
+				// todo Clean this up as checking for the type of command like this is not ideal
+				$message = $package === 'horizon'
+					? 'Restarting horizon...'
+					: "Installing $package...";
+
                 // Update the progress bar
-                $cli->getProgress()->setMessage("Installing $package...");
-                $cli->getProgress()->advance();
+                $cli->getProgress()->setMessage($message);
 
                 try {
                     $command_output = $cli->runAsUser($command, static function ($exitCode, $out) {
@@ -238,6 +394,8 @@ if (!FileSystem::isDir(PM_HOME_PATH)) {
                     continue;
                 }
 
+                $cli->getProgress()->advance();
+
                 if (!$verbose) {
                     continue;
                 }
@@ -252,6 +410,13 @@ if (!FileSystem::isDir(PM_HOME_PATH)) {
 
                 $cli->getProgress()->display();
             }
+        }
+
+		// Restart supervisor processes
+        if ($supervisor_should_restart) {
+            $cli->getProgress()->setMessage('Restarting supervisor processes...');
+            Supervisor::restart();
+            $cli->getProgress()->advance();
         }
 
         // Clean up the progress bar
@@ -271,11 +436,11 @@ if (!FileSystem::isDir(PM_HOME_PATH)) {
     /*
      * -------------------------------------------------+
      * |                                                |
-     * |    Command: Packages                           |
+     * |    Command: Packages:Status                    |
      * |                                                |
      * -------------------------------------------------+
      */
-    $app->command('packages', function () {
+    $app->command('packages:status', function () {
 
         table(['Name', 'Version', 'Branch', 'Commit Hash'], Packages::getPackagesTableData());
 
@@ -284,11 +449,11 @@ if (!FileSystem::isDir(PM_HOME_PATH)) {
     /*
      * -------------------------------------------------+
      * |                                                |
-     * |    Command: Pull                               |
+     * |    Command: Packages:Pull                      |
      * |                                                |
      * -------------------------------------------------+
      */
-    $app->command('pull [-4|--for_41_develop]', function (InputInterface $input, OutputInterface $output) {
+    $app->command('packages:pull [-4|--for_41_develop]', function (InputInterface $input, OutputInterface $output) {
 
         // Updates to 4.1-branch of packages (or not)
         $for_41_develop = $input->getOption('for_41_develop');
@@ -299,18 +464,18 @@ if (!FileSystem::isDir(PM_HOME_PATH)) {
         // Put everything together and run it
         $for_41_develop ? Packages::pull41($verbose) : Packages::pull($verbose);
 
-    })->descriptions('Cycles through each local store of supported ProcessMaker 4 packages.',
+    })->descriptions('Resets and updates the locally stored ProcessMaker 4 composer packages to the latest from GitHub.',
         ['--for_41_develop' => 'Change each package to the correct version for the 4.1 version of processmaker/processmaker']
     );
 
     /*
      * -------------------------------------------------+
      * |                                                |
-     * |    Command: Clone All                          |
+     * |    Command: Packages:Clone All                 |
      * |                                                |
      * -------------------------------------------------+
      */
-    $app->command('clone-all [-f|--force]', function ($force = null) {
+    $app->command('packages:clone-all [-f|--force]', function ($force = null) {
         foreach (Packages::getSupportedPackages() as $index => $package) {
             try {
                 if (Packages::clonePackage($package)) {

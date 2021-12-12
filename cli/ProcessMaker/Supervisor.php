@@ -13,7 +13,7 @@ class Supervisor
      *
      * @return bool
      */
-    public function available(): bool
+    public function running(): bool
     {
         try {
             return is_string(Cli::runAsUser('supervisorctl status', function ($exitCode, $output) {
@@ -47,7 +47,7 @@ class Supervisor
      */
     public function stop(string $process = null): bool
     {
-        if (!$this->available()) {
+        if (!$this->running()) {
             return false;
         }
 
@@ -70,7 +70,7 @@ class Supervisor
      */
     public function restart(string $process = null): bool
     {
-        if (!$this->available()) {
+        if (!$this->running()) {
             return false;
         }
 
