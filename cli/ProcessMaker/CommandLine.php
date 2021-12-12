@@ -12,8 +12,6 @@ class CommandLine
 
     public function __construct()
     {
-        dump($this);
-
         $this->time = microtime(true);
     }
 
