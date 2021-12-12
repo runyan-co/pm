@@ -235,7 +235,7 @@ if (!FileSystem::isDir(PM_HOME_PATH)) {
 
 			foreach ($commands as $command) {
                 try {
-                    $out = $cli->runAsUser($command, static function ($exitCode, $out) {
+                    $out = $cli->run($command, static function ($exitCode, $out) {
                         throw new RuntimeException($out);
                     }, Config::codebasePath());
                 } catch (RuntimeException $exception) {
@@ -379,7 +379,7 @@ if (!FileSystem::isDir(PM_HOME_PATH)) {
                 $cli->getProgress()->setMessage($message);
 
                 try {
-                    $command_output = $cli->runAsUser($command, static function ($exitCode, $out) {
+                    $command_output = $cli->run($command, static function ($exitCode, $out) {
                         throw new RuntimeException($out);
                     }, Config::codebasePath());
                 } catch (RuntimeException $exception) {

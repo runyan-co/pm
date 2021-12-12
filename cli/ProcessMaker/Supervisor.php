@@ -16,12 +16,7 @@ class Supervisor
     public function running(): bool
     {
         try {
-            return is_string(Cli::runAsUser('supervisorctl status', function ($exitCode, $output) {
-                // Even if one ore more of the processes have failed to
-                // start or were incorrectly terminated, all we want to
-                // know with this method is whether or not supervisor is
-                // running at all, so as long as we receive output that
-                // doesn't include a socket connection failure, we're set
+            return is_string(Cli::run('supervisorctl status', function ($exitCode, $output) {
                 if (Str::contains($output, 'refused connection')) {
                     throw new RuntimeException();
                 }
@@ -53,7 +48,7 @@ class Supervisor
 
         $process = $process ?? 'all';
 
-        return is_string(Cli::runAsUser("supervisorctl stop $process", function ($exitCode, $output) {
+        return is_string(Cli::run("supervisorctl stop $process", function ($exitCode, $output) {
             throw new RuntimeException($output);
         }));
     }
@@ -76,7 +71,7 @@ class Supervisor
 
         $process = $process ?? 'all';
 
-        $restarted = Cli::runAsUser("supervisorctl restart $process", function ($exitCode, $output) {
+        $restarted = Cli::run("supervisorctl restart $process", function ($exitCode, $output) {
             throw new RuntimeException($output);
         });
 

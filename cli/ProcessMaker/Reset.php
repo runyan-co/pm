@@ -3,12 +3,15 @@
 namespace ProcessMaker\Cli;
 
 use DomainException;
+use \CommandLine as Cli;
 use \Config as ConfigFacade;
 use \FileSystem as Fs;
 use Illuminate\Support\Str;
 
 class Reset
 {
+    protected $branch;
+
     protected static $gitCommands = [
         'git reset --hard',
         'git clean -d -f .',
@@ -26,31 +29,6 @@ class Reset
         'npm run dev --non-interactive'
     ];
 
-    protected static $artisanInstallCommands = [
-        // The ProcessMaker artisan install command with
-        // the arguments pre-populated (speeds everything
-        // up quite a bit)
-        PHP_BINARY.' artisan processmaker:install \
-            --no-interaction \
-            --app-debug \
-            --telescope \
-            --db-password= \
-            --db-username=root \
-            --db-host=127.0.0.1 \
-            --db-port=3306 \
-            --data-driver=mysql \
-            --db-name=processmaker \
-            --url=http://processmaker.test \
-            --password=12345678 \
-            --email=noreply@processmaker.test \
-            --username=admin \
-            --first-name=Change \
-            --last-name=Maker \
-            --redis-client=phpredis \
-            --redis-host=127.0.0.1 \
-            --session-domain="";',
-    ];
-
     /**
      * Build a keyed array of arrays, each of which contains a subset of commands to
      * reset and setup the basics of the core (processmaker/processmaker) codebase
@@ -62,6 +40,8 @@ class Reset
      */
     public function buildResetCommands(string $branch, bool $bounce_database = false): array
     {
+        $this->branch = $branch;
+
         $gitCommands = array_map(static function ($command) use ($branch) {
             return Str::replace('{branch}', $branch, $command);
         }, static::$gitCommands);
@@ -70,18 +50,53 @@ class Reset
             ? ['database' => [$this->buildDropAndCreateSqlCommand()]]
             : [];
 
-        $gitCommands /**************/ = ['git' => $gitCommands];
-        $composerCommands /*********/ = ['composer' => static::$composerCommands];
-        $artisanInstallCommands /***/ = ['artisan install' => static::$artisanInstallCommands];
-        $npmCommands /**************/ = ['npm' => static::$npmCommands];
-
         return array_filter(array_merge(
             $databaseCommands,
-            $gitCommands,
-            $composerCommands,
-            $artisanInstallCommands,
-            $npmCommands
+            ['git' => $gitCommands],
+            ['composer' => static::$composerCommands],
+            ['artisan install' => [$this->buildartisanInstallCommands()]],
+            ['npm' => static::$npmCommands]
         ));
+    }
+
+    /**
+     * The ProcessMaker artisan install command with the arguments
+     * pre-populated (speeds everything up quite a bit)
+     *
+     * @return string
+     */
+    public function buildArtisanInstallCommands(): string
+    {
+        $redis_driver = extension_loaded('redis')
+            ? 'phpredis'
+            : 'predis';
+
+        $install_command = [
+            PHP_BINARY.' artisan processmaker:install',
+            '--no-interaction',
+            '--app-debug',
+            '--telescope',
+            '--db-password=',
+            '--db-username=root',
+            '--db-host=127.0.0.1',
+            '--db-port=3306',
+            '--data-driver=mysql',
+            '--db-name=processmaker',
+            '--url=http://processmaker.test',
+            '--password=12345678',
+            '--email=noreply@processmaker.test',
+            '--username=admin',
+            '--first-name=Change',
+            '--last-name=Maker',
+            "--redis-client=$redis_driver",
+            '--redis-host=127.0.0.1'
+        ];
+
+        if ($this->branch !== '4.1-develop') {
+            $install_command[] = '--session-domain=';
+        }
+
+        return implode(" ", $install_command).';';
     }
 
     /**
@@ -109,7 +124,7 @@ EOFMYSQL";
     public function formatEnvFile(string $path = null): void
     {
         if (!$path) {
-            $path = ConfigFacade::codebasePath().'/.env';
+            $path = ConfigFacade::codebasePath('.env');
         }
 
         if (!Fs::exists($path)) {
@@ -126,7 +141,7 @@ EOFMYSQL";
             'APP_ENV=local',
             'SESSION_DRIVER=redis',
             'CACHE_DRIVER=redis',
-            'PROCESSMAKER_SCRIPTS_TIMEOUT='.(new CommandLine())->runAsUser('which timeout'),
+            'PROCESSMAKER_SCRIPTS_TIMEOUT='.(new CommandLine())->run('which timeout'),
             'DOCKER_HOST_URL=http://host.docker.internal',
             'SESSION_SECURE_COOKIE=false',
             'SESSION_DOMAIN=processmaker.test',
@@ -134,7 +149,7 @@ EOFMYSQL";
             'LARAVEL_ECHO_SERVER_SSL_KEY=""',
             'LARAVEL_ECHO_SERVER_SSL_CERT=""',
             'API_SSL_VERIFY=0',
-            'NODE_BIN_PATH='.(new CommandLine())->runAsUser('which node'),
+            'NODE_BIN_PATH='.(new CommandLine())->run('which node'),
         ];
 
         $env_contents = Fs::get($path);

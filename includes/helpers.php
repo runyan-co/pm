@@ -8,7 +8,7 @@ use Symfony\Component\Console\Helper\Table;
 use Symfony\Component\Console\Output\ConsoleOutput;
 
 if (!defined('BREW_PREFIX')) {
-    define('BREW_PREFIX', (new CommandLine())->runAsUser('printf $(brew --prefix)'));
+    define('BREW_PREFIX', (new CommandLine())->run('printf $(brew --prefix)'));
 }
 
 if (!defined('PM_HOME_PATH')) {

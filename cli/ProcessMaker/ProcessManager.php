@@ -5,7 +5,6 @@ namespace ProcessMaker\Cli;
 use LogicException;
 use React\ChildProcess\Process;
 use Illuminate\Support\Collection;
-use Symfony\Component\Console\Output\ConsoleOutput;
 
 class ProcessManager
 {
@@ -23,7 +22,7 @@ class ProcessManager
         $this->outputCollection = $outputCollection;
     }
 
-    public function setVerbosity(bool $verbose)
+    public function setVerbosity(bool $verbose): void
     {
         $this->verbose = $verbose;
     }
@@ -33,7 +32,7 @@ class ProcessManager
         return $key ? $this->outputCollection->get($key) : $this->outputCollection;
     }
 
-    public function addProcessOutput(string $key, $output)
+    public function addProcessOutput(string $key, $output): void
     {
         if (!$this->getProcessOutput()->has($key)) {
              $this->getProcessOutput()->put($key, new Collection);
@@ -80,7 +79,7 @@ class ProcessManager
     /**
      * @param  array  $commands
      */
-    public function buildProcessesBundleAndStart(array $commands)
+    public function buildProcessesBundleAndStart(array $commands): void
     {
         $this->startProcessesBundle($this->buildProcessesBundle($commands));
     }
