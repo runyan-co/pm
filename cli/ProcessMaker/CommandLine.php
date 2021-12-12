@@ -12,6 +12,8 @@ class CommandLine
 
     public function __construct()
     {
+        dump($this);
+
         $this->time = microtime(true);
     }
 
@@ -26,6 +28,7 @@ class CommandLine
         $seconds = round(abs($this->time - microtime(true)), 2);
         $minutes = round($seconds / 60, 2);
         $hours = round($minutes / 60, 2);
+
         if ($hours >= 1.00) {
             $minutes = $hours - round($hours);
             $minutes = round($minutes * 60);
@@ -33,6 +36,7 @@ class CommandLine
 
             return "$hours h and $minutes m";
         }
+
         if ($minutes >= 1.00) {
             $seconds = $minutes - round($minutes);
             $seconds = round($seconds * 60);
@@ -42,11 +46,6 @@ class CommandLine
         }
 
         return "$seconds s";
-    }
-
-    public function transformCommandToRunAsUser(string $command, string $path = null): string
-    {
-        return ($path ? 'cd '.$path.' && ' : '').$command;
     }
 
     /**
@@ -82,8 +81,10 @@ class CommandLine
     public function createProgressBar(int $count, string $type = 'minimal'): void
     {
         $this->progress = new ProgressBar(new ConsoleOutput(), $count);
+
         ProgressBar::setFormatDefinition('message', '<info>%message%</info> (%percent%%)');
         ProgressBar::setFormatDefinition('minimal', 'Progress: %percent%%');
+
         $this->progress->setFormat($type);
         $this->progress->setRedrawFrequency(25);
         $this->progress->minSecondsBetweenRedraws(0.025);
@@ -129,23 +130,25 @@ class CommandLine
      */
     public function runCommand(string $command, callable $onError = null, string $workingDir = null): string
     {
-        $onError = $onError
-            ? : static function () {
-            };
+        $onError = $onError ? : static function () {};
+
         if (method_exists(Process::class, 'fromShellCommandline')) {
             $process = Process::fromShellCommandline($command);
         } else {
             $process = new Process($command);
         }
+
         if ($workingDir) {
             if (is_dir($workingDir) && ! is_file($workingDir)) {
                 $process->setWorkingDirectory($workingDir);
             }
         }
+
         $processOutput = '';
         $process->setTimeout(null)->run(function ($type, $line) use (&$processOutput) {
             $processOutput .= $line;
         });
+
         if ($process->getExitCode() > 0) {
             $onError($process->getExitCode(), $processOutput);
         }

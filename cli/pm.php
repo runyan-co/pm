@@ -10,7 +10,6 @@ if (file_exists(__DIR__.'/../vendor/autoload.php')) {
 }
 
 use Silly\Application;
-use Illuminate\Support\Collection;
 use Illuminate\Container\Container;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -22,6 +21,7 @@ use function ProcessMaker\Cli\ {
 };
 
 Container::setInstance(new Container);
+Container::getInstance()->singleton(\ProcessMaker\Cli\CommandLine::class);
 
 $app = new Application('ProcessMaker CLI Tool', '0.5.0');
 
@@ -92,6 +92,12 @@ if (!FileSystem::isDir(PM_HOME_PATH)) {
 
 		// Creates the sudoers entry and the base config file/directory
         Install::install($codebase_path, $packages_path);
+
+		// Clone down all of the supported packages if the
+	    // packages directory is empty
+	    if (count(FileSystem::scandir($packages_path)) === 0) {
+			$this->runCommand('packages:clone-all');
+	    }
 
 		info('Installation complete!');
 
@@ -230,7 +236,6 @@ if (!FileSystem::isDir(PM_HOME_PATH)) {
 
 		// Iterate through them and execute
 		foreach ($command_set as $type_of_commands => $commands) {
-
 			$cli->getProgress()->setMessage("Running $type_of_commands commands...");
 
 			foreach ($commands as $command) {

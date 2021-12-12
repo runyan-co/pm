@@ -5,13 +5,19 @@ namespace ProcessMaker\Cli;
 use Exception;
 use LogicException;
 use RuntimeException;
-use \FileSystem as Fs;
-use \CommandLine as Cli;
 use \Config as ConfigFacade;
 use Illuminate\Support\Str;
 
 class Composer
 {
+    public $cli, $files;
+
+    public function __construct(CommandLine $cli, FileSystem $files)
+    {
+        $this->cli = $cli;
+        $this->files = $files;
+    }
+
     /**
      * @param  string  $path_to_composer_json
      *
@@ -19,7 +25,7 @@ class Composer
      */
     public function getComposerJson(string $path_to_composer_json)
     {
-        if (!Fs::isDir($path_to_composer_json)) {
+        if (!$this->files->isDir($path_to_composer_json)) {
             throw new LogicException("Path to composer.json not found: $path_to_composer_json");
         }
 
@@ -29,11 +35,11 @@ class Composer
 
         $composer_json_file = "$path_to_composer_json/composer.json";
 
-        if (!Fs::exists($composer_json_file)) {
+        if (!$this->files->exists($composer_json_file)) {
             throw new RuntimeException("Composer.json not found: $composer_json_file");
         }
 
-        return json_decode(Fs::get($composer_json_file), false);
+        return json_decode($this->files->get($composer_json_file), false);
     }
 
     /**
@@ -43,7 +49,7 @@ class Composer
     public function addRepositoryPath(): void
     {
         $packagesPath = ConfigFacade::packagesPath();
-        Cli::runCommand("composer config repositories.pm4-packages path ${packagesPath}/*", function($code, $output) {
+        $this->cli->runCommand("composer config repositories.pm4-packages path ${packagesPath}/*", function($code, $output) {
             throw new Exception($output);
         }, ConfigFacade::codebasePath());
     }
@@ -56,7 +62,7 @@ class Composer
      */
     public function require($packages): void
     {
-        Cli::runCommand("composer require $packages", function($code, $output) {
+        $this->cli->runCommand("composer require $packages", function($code, $output) {
             throw new Exception($output);
         }, ConfigFacade::codebasePath());
     }

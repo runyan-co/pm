@@ -3,14 +3,12 @@
 namespace ProcessMaker\Cli;
 
 use DomainException;
-use \CommandLine as Cli;
 use \Config as ConfigFacade;
-use \FileSystem as Fs;
 use Illuminate\Support\Str;
 
 class Reset
 {
-    protected $branch;
+    protected $branch, $cli, $files;
 
     protected static $gitCommands = [
         'git reset --hard',
@@ -28,6 +26,12 @@ class Reset
         'npm install --non-interactive',
         'npm run dev --non-interactive'
     ];
+
+    public function __construct(CommandLine $cli, FileSystem $files)
+    {
+        $this->cli = $cli;
+        $this->files = $files;
+    }
 
     /**
      * Build a keyed array of arrays, each of which contains a subset of commands to
@@ -127,7 +131,7 @@ EOFMYSQL";
             $path = ConfigFacade::codebasePath('.env');
         }
 
-        if (!Fs::exists($path)) {
+        if (!$this->files->exists($path)) {
             throw new DomainException(".env file could not be found: $path");
         }
 
@@ -141,7 +145,7 @@ EOFMYSQL";
             'APP_ENV=local',
             'SESSION_DRIVER=redis',
             'CACHE_DRIVER=redis',
-            'PROCESSMAKER_SCRIPTS_TIMEOUT='.(new CommandLine())->run('which timeout'),
+            'PROCESSMAKER_SCRIPTS_TIMEOUT='.$this->cli->run('which timeout'),
             'DOCKER_HOST_URL=http://host.docker.internal',
             'SESSION_SECURE_COOKIE=false',
             'SESSION_DOMAIN=processmaker.test',
@@ -149,10 +153,10 @@ EOFMYSQL";
             'LARAVEL_ECHO_SERVER_SSL_KEY=""',
             'LARAVEL_ECHO_SERVER_SSL_CERT=""',
             'API_SSL_VERIFY=0',
-            'NODE_BIN_PATH='.(new CommandLine())->run('which node'),
+            'NODE_BIN_PATH='.$this->cli->run('which node'),
         ];
 
-        $env_contents = Fs::get($path);
+        $env_contents = $this->files->get($path);
 
         // Search for and remove the any of the strings
         // found in the $find_and_remove array
@@ -167,6 +171,6 @@ EOFMYSQL";
         $env_contents .= implode("\n", $append);
 
         // Save the file contents
-        Fs::putAsUser($path, $env_contents);
+        $this->files->putAsUser($path, $env_contents);
     }
 }
