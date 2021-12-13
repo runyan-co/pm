@@ -5,7 +5,7 @@
     "license": "MIT",
     "homepage": "https://github.com/runyan-co/pm",
     "bin": ["pm"],
-    "version": "0.5.2-RC",
+    "version": "0.5.3",
     "authors": [
         {
             "name": "Alex Runyan",
