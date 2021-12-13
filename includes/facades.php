@@ -1,8 +1,10 @@
 <?php
 
+namespace ProcessMaker\Facades;
+
 use Illuminate\Container\Container;
 
-class ClassFacade
+abstract class Facade
 {
     /**
      * The key for the binding in the container.
@@ -34,27 +36,27 @@ class ClassFacade
 /**
  * @see \ProcessMaker\Cli\CommandLine
  */
-class CommandLine extends ClassFacade {}
+class CommandLine extends Facade {}
 
 /**
  * @see \ProcessMaker\Cli\FileSystem
  */
-class FileSystem extends ClassFacade {}
+class FileSystem extends Facade {}
 
 /**
  * @see \ProcessMaker\Cli\Packages
  */
-class Packages extends ClassFacade {}
+class Packages extends Facade {}
 
 /**
  * @see \ProcessMaker\Cli\Install
  */
-class Install extends ClassFacade {}
+class Install extends Facade {}
 
 /**
  * @see \ProcessMaker\Cli\ProcessManager
  */
-class ProcessManager extends ClassFacade {}
+class ProcessManager extends Facade {}
 
 /**
  * @see \ProcessMaker\Cli\Composer

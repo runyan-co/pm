@@ -5,12 +5,12 @@ namespace ProcessMaker\Cli;
 use Exception;
 use LogicException;
 use RuntimeException;
-use \Config as ConfigFacade;
+use ProcessMaker\Facades\Config;
 use Illuminate\Support\Str;
 
 class Composer
 {
-    public $cli, $files;
+    public $cli, $files, $config;
 
     public function __construct(CommandLine $cli, FileSystem $files)
     {
@@ -48,10 +48,10 @@ class Composer
      */
     public function addRepositoryPath(): void
     {
-        $packagesPath = ConfigFacade::packagesPath();
+        $packagesPath = Config::packagesPath();
         $this->cli->runCommand("composer config repositories.pm4-packages path ${packagesPath}/*", function($code, $output) {
             throw new Exception($output);
-        }, ConfigFacade::codebasePath());
+        }, Config::codebasePath());
     }
 
     /**
@@ -63,7 +63,7 @@ class Composer
     public function require($packages): void
     {
         $this->cli->runCommand("composer require $packages", function($code, $output) {
-            throw new Exception($output);
-        }, ConfigFacade::codebasePath());
+            throw new RuntimeException($output);
+        }, Config::codebasePath());
     }
 }

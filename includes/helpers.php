@@ -2,13 +2,14 @@
 
 namespace ProcessMaker\Cli;
 
-use Exception;
+use RuntimeException;
 use Illuminate\Container\Container;
+use ProcessMaker\Facades\CommandLine as Cli;
 use Symfony\Component\Console\Helper\Table;
 use Symfony\Component\Console\Output\ConsoleOutput;
 
 if (!defined('BREW_PREFIX')) {
-    define('BREW_PREFIX', resolve(CommandLine::class)->run('printf $(brew --prefix)'));
+    define('BREW_PREFIX', Cli::run('printf $(brew --prefix)'));
 }
 
 if (!defined('PM_HOME_PATH')) {
@@ -72,7 +73,7 @@ function user() {
  */
 function should_be_sudo() {
     if (!isset($_SERVER['SUDO_USER'])) {
-        throw new Exception('This command must be run with sudo.');
+        throw new RuntimeException('This command must be run with sudo.');
     }
 }
 

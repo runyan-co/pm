@@ -2,7 +2,7 @@
 
 namespace ProcessMaker\Cli;
 
-use \CommandLine as Cli;
+use ProcessMaker\Facades\CommandLine as Cli;
 
 class Install
 {

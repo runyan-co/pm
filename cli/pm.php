@@ -16,6 +16,10 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Question\ConfirmationQuestion;
 use Symfony\Component\Console\Question\Question;
 
+use ProcessMaker\Facades\ {
+	Reset, Config, Install, Packages, PackagesCi, FileSystem, Supervisor
+};
+
 use function ProcessMaker\Cli\ {
     info, table, output, resolve, warning, warningThenExit,
 };

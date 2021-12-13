@@ -1,8 +1,9 @@
 <?php
+
 namespace ProcessMaker\Cli;
 
-use \Git;
-use \Config;
+use ProcessMaker\Facades\Git;
+use ProcessMaker\Facades\Config;
 
 class PackagesCi {
     public function install()

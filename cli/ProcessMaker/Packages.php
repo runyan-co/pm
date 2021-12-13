@@ -6,11 +6,11 @@ use Exception;
 use LogicException;
 use DomainException;
 use RuntimeException;
-use \Git as GitFacade;
-use \Composer as ComposerFacade;
-use \Config as ConfigFacade;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
+use Illuminate\Support\Collection;
+use ProcessMaker\Facades\Git;
+use ProcessMaker\Facades\Composer;
+use ProcessMaker\Facades\Config;
 
 class Packages
 {
@@ -82,11 +82,11 @@ class Packages
         $packages_package_path = $packages_package['path'];
 
         // Make sure we're on the right branch
-        $defaultBranch = GitFacade::getDefaultBranch($packages_package_path);
-        $branchSwitchResult = GitFacade::switchBranch($defaultBranch, $packages_package_path);
+        $defaultBranch = Git::getDefaultBranch($packages_package_path);
+        $branchSwitchResult = Git::switchBranch($defaultBranch, $packages_package_path);
 
         // Find and decode composer.json
-        $composer_json = ComposerFacade::getComposerJson($packages_package_path);
+        $composer_json = Composer::getComposerJson($packages_package_path);
 
         try {
             // We want just the package names for now
@@ -135,14 +135,14 @@ class Packages
         }
 
         if ($force) {
-            $this->files->rmdir(ConfigFacade::packagesPath()."/$name");
+            $this->files->rmdir(Config::packagesPath()."/$name");
         }
 
         $command = "git clone https://github.com/ProcessMaker/$name";
 
         $output = $this->cli->run($command, function ($code, $out) use ($name) {
             throw new RuntimeException("Failed to clone $name: ".PHP_EOL.$out);
-        }, ConfigFacade::packagesPath());
+        }, Config::packagesPath());
 
         return $this->packageExists($name);
     }
@@ -198,7 +198,7 @@ class Packages
     public function getPackagesListFromDirectory(string $package_directory = null): array
     {
         if (!is_string($package_directory)) {
-            $package_directory = ConfigFacade::packagesPath();
+            $package_directory = Config::packagesPath();
         }
 
         return array_filter($this->files->scandir($package_directory), function ($dir) use($package_directory) {
@@ -222,7 +222,7 @@ class Packages
         $packages = array_map(function ($package_name) {
             return [
                 'name' => $package_name,
-                'path' => ConfigFacade::packagesPath() . "/$package_name"
+                'path' => Config::packagesPath() . "/$package_name"
             ];
         }, $this->getPackagesListFromDirectory());
 
@@ -238,7 +238,7 @@ class Packages
      */
     public function getPackageVersion(string $package_directory): string
     {
-        $composer_json = ComposerFacade::getComposerJson($package_directory) ?? new class {};
+        $composer_json = Composer::getComposerJson($package_directory) ?? new class {};
 
         if (!property_exists($composer_json, 'version')) {
             return '...';
@@ -297,7 +297,7 @@ class Packages
                 'name' => $package['name'],
                 $version_key => $this->getPackageVersion($path),
                 $branch_key => $this->getCurrentGitBranchName($path),
-                $hash_key => GitFacade::getCurrentCommitHash($path)
+                $hash_key => Git::getCurrentCommitHash($path)
             ];
         }
 
@@ -459,8 +459,8 @@ class Packages
      */
     public function buildPackageInstallCommands(bool $for_41_develop = false, bool $force = false): Collection
     {
-        if (!$this->files->isDir(ConfigFacade::codebasePath())) {
-            throw new LogicException('Could not find ProcessMaker codebase: '. ConfigFacade::codebasePath());
+        if (!$this->files->isDir(Config::codebasePath())) {
+            throw new LogicException('Could not find ProcessMaker codebase: '. Config::codebasePath());
         }
 
         // Find out which branch to switch to in the local
@@ -468,7 +468,7 @@ class Packages
         $branch = $for_41_develop ? '4.1-develop' : 'develop';
 
         // Find out which branch we're on
-        $current_branch = GitFacade::getCurrentBranchName(ConfigFacade::codebasePath());
+        $current_branch = Git::getCurrentBranchName(Config::codebasePath());
 
         // Make sure we're on the right branch
         if ($current_branch !== $branch && ! $force) {
@@ -486,7 +486,7 @@ class Packages
                     return false;
                 }
 
-                return '4.1-develop' !== GitFacade::getCurrentBranchName($this->getPackagePath($package));
+                return '4.1-develop' !== Git::getCurrentBranchName($this->getPackagePath($package));
             });
         }
 

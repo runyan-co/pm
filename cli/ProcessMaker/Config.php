@@ -2,7 +2,7 @@
 
 namespace ProcessMaker\Cli;
 
-use \Install;
+use ProcessMaker\Facades\Install;
 
 class Config
 {
