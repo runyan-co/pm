@@ -3,7 +3,7 @@
 namespace ProcessMaker\Cli;
 
 use DomainException;
-use \Config as ConfigFacade;
+use ProcessMaker\Facades\Config;
 use Illuminate\Support\Str;
 
 class Reset
@@ -128,7 +128,7 @@ EOFMYSQL";
     public function formatEnvFile(string $path = null): void
     {
         if (!$path) {
-            $path = ConfigFacade::codebasePath('.env');
+            $path = Config::codebasePath('.env');
         }
 
         if (!$this->files->exists($path)) {

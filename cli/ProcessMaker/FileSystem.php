@@ -3,7 +3,7 @@
 namespace ProcessMaker\Cli;
 
 use RuntimeException;
-use \CommandLine as Cli;
+use ProcessMaker\Facades\CommandLine as Cli;
 
 class FileSystem
 {
