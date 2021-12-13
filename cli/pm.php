@@ -21,7 +21,6 @@ use function ProcessMaker\Cli\ {
 };
 
 Container::setInstance(new Container);
-Container::getInstance()->singleton(\ProcessMaker\Cli\CommandLine::class);
 
 $app = new Application('ProcessMaker CLI Tool', '0.5.0');
 

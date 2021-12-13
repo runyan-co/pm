@@ -2,7 +2,7 @@
 
 use Illuminate\Container\Container;
 
-class Facade
+class ClassFacade
 {
     /**
      * The key for the binding in the container.
@@ -34,27 +34,27 @@ class Facade
 /**
  * @see \ProcessMaker\Cli\CommandLine
  */
-class CommandLine extends Facade {}
+class CommandLine extends ClassFacade {}
 
 /**
  * @see \ProcessMaker\Cli\FileSystem
  */
-class FileSystem extends Facade {}
+class FileSystem extends ClassFacade {}
 
 /**
  * @see \ProcessMaker\Cli\Packages
  */
-class Packages extends Facade {}
+class Packages extends ClassFacade {}
 
 /**
  * @see \ProcessMaker\Cli\Install
  */
-class Install extends Facade {}
+class Install extends ClassFacade {}
 
 /**
  * @see \ProcessMaker\Cli\ProcessManager
  */
-class ProcessManager extends Facade {}
+class ProcessManager extends ClassFacade {}
 
 /**
  * @see \ProcessMaker\Cli\Composer
