@@ -8,8 +8,8 @@ use ProcessMaker\Facades\CommandLine as Cli;
 use Symfony\Component\Console\Helper\Table;
 use Symfony\Component\Console\Output\ConsoleOutput;
 
-if (!defined('BREW_PREFIX')) {
-    define('BREW_PREFIX', Cli::run('printf $(brew --prefix)'));
+if (!defined('HOMEBREW_PREFIX')) {
+    define('HOMEBREW_PREFIX', Cli::run('printf $(brew --prefix)'));
 }
 
 if (!defined('PM_HOME_PATH')) {
