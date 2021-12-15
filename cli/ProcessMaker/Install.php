@@ -8,7 +8,7 @@ class Install
 {
     public $files;
 
-    public $bin = BREW_PREFIX.'/bin/pm';
+    public $bin = HOMEBREW_PREFIX.'/bin/pm';
 
     public function __construct(FileSystem $files)
     {
