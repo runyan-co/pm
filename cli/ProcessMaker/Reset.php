@@ -31,7 +31,7 @@ class Reset
 
     protected static $npmCommands = [
         'npm install --non-interactive --quiet',
-        'npm run dev --non-interactive --quiet'
+        'npm run dev --non-interactive --quiet',
     ];
 
     public function __construct(CommandLine $cli, FileSystem $files)

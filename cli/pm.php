@@ -170,10 +170,11 @@ if (!FileSystem::isDir(PM_HOME_PATH)) {
 	* |                                                |
 	* -------------------------------------------------+
 	*/
-	$app->command('core:reset [branch] [-d|--bounce-database', function (InputInterface $input, OutputInterface $output) {
+	$app->command('core:reset [branch] [-d|--bounce-database] [--no-npm]', function (InputInterface $input, OutputInterface $output) {
 
 		$branch = $input->getArgument('branch') ?? 'develop';
 		$verbose = $input->getOption('verbose') ?? false;
+        $no_npm = $input->getOption('no-npm') ?? false;
 
 		// Whether or not we should destroy the MySQL database and then recreate it
 		$bounce_database = $input->getOption('bounce-database') ?? false;
@@ -188,6 +189,11 @@ if (!FileSystem::isDir(PM_HOME_PATH)) {
         // Put together the commands necessary
         // to reset the core codebase
         $command_set = Reset::buildResetCommands($branch, $bounce_database);
+
+		// Remove npm commands if needed
+		if ($no_npm && array_key_exists('npm', $command_set)) {
+			unset($command_set['npm']);
+		}
 
         // Grab an instance of the CommandLine class
         $cli = resolve(\ProcessMaker\Cli\CommandLine::class);
@@ -241,7 +247,6 @@ if (!FileSystem::isDir(PM_HOME_PATH)) {
 
 		// Iterate through them and execute
 		foreach ($command_set as $type_of_commands => $commands) {
-
             $cli->getProgress()->setMessage("Running $type_of_commands commands...");
 
 			foreach ($commands as $command) {
@@ -299,7 +304,8 @@ if (!FileSystem::isDir(PM_HOME_PATH)) {
         output(PHP_EOL."<info>Finished in</info> $timing");
 	})->descriptions('Reset the core codebase, install composer and npm dependencies, builds npm assets', [
 		'branch' => 'Default: \'develop\'. Otherwise will try to switch to the branch name provided.',
-		'--bounce-database' => 'Drops the database the core codebase was using and recreates it'
+		'--bounce-database' => 'Drop and create a new database',
+		'--no-npm' => 'Skip npm commands'
 	]);
 
     /*
