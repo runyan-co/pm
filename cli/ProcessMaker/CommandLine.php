@@ -28,7 +28,7 @@ class CommandLine
         $hours = round($minutes / 60, 2);
 
         if ($hours >= 1.00) {
-            $minutes = $hours - round($hours);
+            $minutes = abs($hours - round($hours));
             $minutes = round($minutes * 60);
             $hours = round($hours);
 
@@ -36,7 +36,7 @@ class CommandLine
         }
 
         if ($minutes >= 1.00) {
-            $seconds = $minutes - round($minutes);
+            $seconds = abs($minutes - round($minutes));
             $seconds = round($seconds * 60);
             $minutes = round($minutes);
 
