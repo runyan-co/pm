@@ -13,18 +13,25 @@ class Reset
     protected static $gitCommands = [
         'git reset --hard',
         'git clean -d -f .',
-        "git checkout {branch}",
         'git fetch --all',
+        "git checkout {branch}",
         'git pull --force',
     ];
 
+    protected static $cleanupCommands = [
+        'rm -rf storage/logs/*.log',
+        'if [ -d storage/app/scripts ]; then rm -rf storage/app/scripts/*; fi',
+        'if [ -d storage/app/imports ]; then rm -rf storage/app/imports/*; fi',
+        'if [ -d storage/api-docs ]; then rm -rf storage/api-docs/*; fi',
+    ];
+
     protected static $composerCommands = [
-        'composer install --optimize-autoloader --no-interaction --no-suggest --no-progress'
+        'composer install --optimize-autoloader --no-interaction --no-progress'
     ];
 
     protected static $npmCommands = [
-        'npm install --non-interactive',
-        'npm run dev --non-interactive'
+        'npm install --non-interactive --quiet',
+        'npm run dev --non-interactive --quiet'
     ];
 
     public function __construct(CommandLine $cli, FileSystem $files)
@@ -46,21 +53,50 @@ class Reset
     {
         $this->branch = $branch;
 
-        $gitCommands = array_map(static function ($command) use ($branch) {
+        $cleanupCommands = ['cleanup' => static::$cleanupCommands];
+
+        $gitCommands = ['git' => array_map(static function ($command) use ($branch) {
             return Str::replace('{branch}', $branch, $command);
-        }, static::$gitCommands);
+        }, static::$gitCommands)];
 
         $databaseCommands = $bounce_database
             ? ['database' => [$this->buildDropAndCreateSqlCommand()]]
             : [];
 
+        $dockerExecutable = $this->findExecutable('docker');
+
+        // todo Need to update the core repo to set the docker executable location as an arg for the artisan install command
+        $formatEnvExampleCommand = [];
+
+        if ($this->branch === '4.1-develop') {
+            $formatEnvExampleCommand = [
+                '4.1 cleanup' => [
+                    "sed -i -- 's+/usr/bin/docker+$dockerExecutable+g' config/app.php",
+                    "if [ -f config/app.php-- ]; then rm config/app.php--; fi"
+                ]
+            ];
+        }
+
+        $composerCommands = ['composer' => static::$composerCommands];
+
+        $artisanInstallCommands = ['artisan install' => [$this->buildartisanInstallCommands()]];
+
+        $npmCommands = ['npm' => static::$npmCommands];
+
         return array_filter(array_merge(
             $databaseCommands,
-            ['git' => $gitCommands],
-            ['composer' => static::$composerCommands],
-            ['artisan install' => [$this->buildartisanInstallCommands()]],
-            ['npm' => static::$npmCommands]
+            $cleanupCommands,
+            $gitCommands,
+            $formatEnvExampleCommand,
+            $composerCommands,
+            $artisanInstallCommands,
+            $npmCommands
         ));
+    }
+
+    public function findExecutable(string $executable_name): string
+    {
+        return Str::replace([PHP_EOL, "\n"], '', $this->cli->run("which $executable_name"));
     }
 
     /**
@@ -143,17 +179,18 @@ EOFMYSQL";
 
         $append = [
             'APP_ENV=local',
-            'SESSION_DRIVER=redis',
+            'API_SSL_VERIFY=0',
             'CACHE_DRIVER=redis',
-            'PROCESSMAKER_SCRIPTS_TIMEOUT='.$this->cli->run('which timeout'),
             'DOCKER_HOST_URL=http://host.docker.internal',
+            'PROCESSMAKER_SCRIPTS_TIMEOUT='.$this->findExecutable('timeout'),
+            'PROCESSMAKER_SCRIPTS_DOCKER='.$this->findExecutable('docker'),
+            'SESSION_DRIVER=redis',
             'SESSION_SECURE_COOKIE=false',
             'SESSION_DOMAIN=processmaker.test',
             'LARAVEL_ECHO_SERVER_PROTO=http',
             'LARAVEL_ECHO_SERVER_SSL_KEY=""',
             'LARAVEL_ECHO_SERVER_SSL_CERT=""',
-            'API_SSL_VERIFY=0',
-            'NODE_BIN_PATH='.$this->cli->run('which node'),
+            'NODE_BIN_PATH='.$this->findExecutable('node'),
         ];
 
         $env_contents = $this->files->get($path);
@@ -161,9 +198,7 @@ EOFMYSQL";
         // Search for and remove the any of the strings
         // found in the $find_and_remove array
         foreach ($find_and_remove as $search_for) {
-            if (Str::contains($env_contents, "$search_for\n")) {
-                $env_contents = Str::replace("$search_for\n", '', $env_contents);
-            }
+            $env_contents = Str::replace("$search_for\n", '', $env_contents);
         }
 
         // Append the remaining env variables to enable the

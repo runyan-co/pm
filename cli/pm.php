@@ -202,7 +202,7 @@ if (!FileSystem::isDir(PM_HOME_PATH)) {
 
 		// If the .env file exists before resetting, we have to
 		// remove it to allow the artisan install process to work
-        if ($env_file_exists = FileSystem::exists($env = Config::codebasePath().'/.env')) {
+        if ($env_file_exists = FileSystem::exists($env = Config::codebasePath('/.env'))) {
 			++$steps;
         }
 
@@ -223,8 +223,9 @@ if (!FileSystem::isDir(PM_HOME_PATH)) {
 		// or causing other chaos while we do the reset
 		if ($supervisor_should_restart) {
             $cli->getProgress()->setMessage('Stopping supervisor processes...');
-			Supervisor::stop();
             $cli->getProgress()->advance();
+
+			Supervisor::stop();
 		}
 
 		// The 'git clean' command run doesn't affect ignored
@@ -233,13 +234,15 @@ if (!FileSystem::isDir(PM_HOME_PATH)) {
 		// artisan install command with it present
 		if ($env_file_exists) {
             $cli->getProgress()->setMessage('Removing .env file...');
-			FileSystem::unlink($env);
             $cli->getProgress()->advance();
+
+			FileSystem::unlink($env);
 		}
 
 		// Iterate through them and execute
 		foreach ($command_set as $type_of_commands => $commands) {
-			$cli->getProgress()->setMessage("Running $type_of_commands commands...");
+
+            $cli->getProgress()->setMessage("Running $type_of_commands commands...");
 
 			foreach ($commands as $command) {
                 try {
@@ -247,7 +250,6 @@ if (!FileSystem::isDir(PM_HOME_PATH)) {
                         throw new RuntimeException($out);
                     }, Config::codebasePath());
                 } catch (RuntimeException $exception) {
-
                     $cli->getProgress()->clear();
 
                     output("<fg=red>Command Failed:</> $command");
@@ -255,8 +257,6 @@ if (!FileSystem::isDir(PM_HOME_PATH)) {
 
                     exit(0);
                 }
-
-                $cli->getProgress()->advance();
 
                 if (!$verbose) {
                     continue;
@@ -269,20 +269,24 @@ if (!FileSystem::isDir(PM_HOME_PATH)) {
 
                 $cli->getProgress()->display();
 			}
+
+            $cli->getProgress()->advance();
 		}
 
 		// Now we need to reformat the .env file so it's
 		// setup properly for a local environment
         $cli->getProgress()->setMessage('Reformatting .env file...');
-		Reset::formatEnvFile();
         $cli->getProgress()->advance();
+
+		Reset::formatEnvFile();
 
         // If supervisor processes were stopped before
         // executing the commands, now we can restart them
         if ($supervisor_should_restart) {
             $cli->getProgress()->setMessage('Restarting supervisor processes...');
-            Supervisor::restart();
             $cli->getProgress()->advance();
+
+			Supervisor::restart();
         }
 
 		$cli->getProgress()->finish();

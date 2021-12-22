@@ -316,8 +316,8 @@ class Packages
             $package_commands = [
                 'git reset --hard',
                 'git clean -d -f .',
-                "git checkout $branch",
                 'git fetch --all',
+                "git checkout $branch",
                 'git pull --force',
             ];
 
