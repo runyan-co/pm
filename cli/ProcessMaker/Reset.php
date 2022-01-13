@@ -11,18 +11,7 @@ class Reset
     protected $branch, $cli, $files;
 
     protected static $gitCommands = [
-        'git reset --hard',
-        'git clean -d -f .',
-        'git fetch --all',
-        "git checkout {branch}",
-        'git pull --force',
-    ];
-
-    protected static $cleanupCommands = [
-        'rm -rf storage/logs/*.log',
-        'if [ -d storage/app/scripts ]; then rm -rf storage/app/scripts/*; fi',
-        'if [ -d storage/app/imports ]; then rm -rf storage/app/imports/*; fi',
-        'if [ -d storage/api-docs ]; then rm -rf storage/api-docs/*; fi',
+        'git checkout {branch}',
     ];
 
     protected static $composerCommands = [
@@ -52,8 +41,6 @@ class Reset
     public function buildResetCommands(string $branch, bool $bounce_database = false): array
     {
         $this->branch = $branch;
-
-        $cleanupCommands = ['cleanup' => static::$cleanupCommands];
 
         $gitCommands = ['git' => array_map(static function ($command) use ($branch) {
             return Str::replace('{branch}', $branch, $command);
@@ -85,7 +72,6 @@ class Reset
 
         return array_filter(array_merge(
             $databaseCommands,
-            $cleanupCommands,
             $gitCommands,
             $formatEnvExampleCommand,
             $composerCommands,

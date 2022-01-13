@@ -10,6 +10,7 @@ if (file_exists(__DIR__.'/../vendor/autoload.php')) {
 }
 
 use Silly\Application;
+use Illuminate\Support\Str;
 use Illuminate\Container\Container;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -17,11 +18,11 @@ use Symfony\Component\Console\Question\ConfirmationQuestion;
 use Symfony\Component\Console\Question\Question;
 
 use ProcessMaker\Facades\ {
-	Reset, Config, Install, Packages, PackagesCi, FileSystem, Supervisor
+	Reset, Config, Install, Packages, PackagesCi, FileSystem, Supervisor, Docker, Git
 };
 
 use function ProcessMaker\Cli\ {
-    info, table, output, resolve, warning, warningThenExit,
+    info, table, output, resolve, warning, warningThenExit, tmpdir
 };
 
 Container::setInstance(new Container);
@@ -111,6 +112,18 @@ if (!FileSystem::isDir(PM_HOME_PATH)) {
     /*
 	 * -------------------------------------------------+
 	 * |                                                |
+	 * |    Command: Docker                             |
+	 * |                                                |
+	 * -------------------------------------------------+
+	 */
+	$app->command('docker:test', function (InputInterface $input, OutputInterface $output) {
+		$images = Docker::getDockerImages();
+		$needed_image = 'openapitools/openapi-generator-cli:v4.2.2';
+	});
+
+    /*
+	 * -------------------------------------------------+
+	 * |                                                |
 	 * |    Command: Supervisor:Status                  |
 	 * |                                                |
 	 * -------------------------------------------------+
@@ -170,20 +183,21 @@ if (!FileSystem::isDir(PM_HOME_PATH)) {
 	* |                                                |
 	* -------------------------------------------------+
 	*/
-	$app->command('core:reset [branch] [-d|--bounce-database] [--no-npm]', function (InputInterface $input, OutputInterface $output) {
+	$app->command('core:reset [branch] [-d|--bounce-database] [--no-npm] [-y|--yes]', function (InputInterface $input, OutputInterface $output) {
 
 		$branch = $input->getArgument('branch') ?? 'develop';
 		$verbose = $input->getOption('verbose') ?? false;
         $no_npm = $input->getOption('no-npm') ?? false;
-
-		// Whether or not we should destroy the MySQL database and then recreate it
+        $no_confirmation = $input->getOption('yes') ?? false;
 		$bounce_database = $input->getOption('bounce-database') ?? false;
 
 		$helper = $this->getHelperSet()->get('question');
 		$question = new ConfirmationQuestion('<comment>Warning:</comment> This will remove all changes to the core codebase and reset the database. Continue? <info>(yes/no)</info> ', false);
 
-		if (false === $helper->ask($input, $output, $question)) {
-			warningThenExit('Reset aborted.');
+		if (!$no_confirmation) {
+            if (false === $helper->ask($input, $output, $question)) {
+                warningThenExit('Reset aborted.');
+            }
 		}
 
         // Put together the commands necessary
@@ -201,15 +215,14 @@ if (!FileSystem::isDir(PM_HOME_PATH)) {
         // Count up the total number of steps in the reset process
         $steps = collect($command_set)->flatten()->count();
 
-        // We also need to add an additional step to account for
-        // the step before last of reformatting the .env file which
-        // is done through a class rather than a command execution
-		++$steps;
+		// Add a step for removing old codebase and
+		// another for cloning a fresh copy from the
+		// git repository
+        $steps += 2;
 
-		// If the .env file exists before resetting, we have to
-		// remove it to allow the artisan install process to work
-        if ($env_file_exists = FileSystem::exists($env = Config::codebasePath('/.env'))) {
-			++$steps;
+        // Save any IDE config files
+        if ($ide_config = FileSystem::exists($ide_config_path = Config::codebasePath('/.idea'))) {
+            $steps += 2;
         }
 
         // The steps increase by 2, for example, if supervisor
@@ -224,9 +237,9 @@ if (!FileSystem::isDir(PM_HOME_PATH)) {
         $cli->getProgress()->setMessage('Starting install...');
         $cli->getProgress()->start();
 
-		// First, let's stop any supervisor processes
-		// to prevent them from throwing exceptions
-		// or causing other chaos while we do the reset
+        // First, let's stop any supervisor processes
+        // to prevent them from throwing exceptions
+        // or causing other chaos while we do the reset
 		if ($supervisor_should_restart) {
             $cli->getProgress()->setMessage('Stopping supervisor processes...');
             $cli->getProgress()->advance();
@@ -234,16 +247,34 @@ if (!FileSystem::isDir(PM_HOME_PATH)) {
 			Supervisor::stop();
 		}
 
-		// The 'git clean' command run doesn't affect ignored
-		// files and since .env file is ignored we need to remove
-		// it in advance a // you cannot run the ProcessMaker
-		// artisan install command with it present
-		if ($env_file_exists) {
-            $cli->getProgress()->setMessage('Removing .env file...');
+		// Save the contents of the IDE settings
+		if ($ide_config) {
+            $cli->getProgress()->setMessage('Copying IDE settings...');
             $cli->getProgress()->advance();
 
-			FileSystem::unlink($env);
+			FileSystem::mv($ide_config_path, $tmp = tmpdir());
 		}
+
+		// Remove old codebase
+        $cli->getProgress()->setMessage('Removing old codebase...');
+        $cli->getProgress()->advance();
+
+		FileSystem::rmdir(Config::codebasePath());
+
+        // Clone a fresh copy
+        $cli->getProgress()->setMessage('Cloning codebase repo...');
+        $cli->getProgress()->advance();
+
+		Git::clone('processmaker', Str::replaceLast('processmaker', '', Config::codebasePath()));
+
+        // Re-add the IDE settings (if they existed to begin with)
+        if ($ide_config && isset($tmp)) {
+            $cli->getProgress()->setMessage('Re-adding IDE settings...');
+            $cli->getProgress()->advance();
+
+            FileSystem::mv("$tmp/.idea", Config::codebasePath());
+			FileSystem::unlink($tmp);
+        }
 
 		// Iterate through them and execute
 		foreach ($command_set as $type_of_commands => $commands) {
@@ -378,8 +409,9 @@ if (!FileSystem::isDir(PM_HOME_PATH)) {
         // or causing other chaos while we do the reset
         if ($supervisor_should_restart) {
             $cli->getProgress()->setMessage('Stopping supervisor processes...');
-            Supervisor::stop();
             $cli->getProgress()->advance();
+
+            Supervisor::stop();
         }
 
         // Iterate through the collection of commands
@@ -395,6 +427,7 @@ if (!FileSystem::isDir(PM_HOME_PATH)) {
 
                 // Update the progress bar
                 $cli->getProgress()->setMessage($message);
+                $cli->getProgress()->advance();
 
                 try {
                     $command_output = $cli->run($command, static function ($exitCode, $out) {
@@ -411,8 +444,6 @@ if (!FileSystem::isDir(PM_HOME_PATH)) {
 
                     continue;
                 }
-
-                $cli->getProgress()->advance();
 
                 if (!$verbose) {
                     continue;
@@ -433,8 +464,9 @@ if (!FileSystem::isDir(PM_HOME_PATH)) {
 		// Restart supervisor processes
         if ($supervisor_should_restart) {
             $cli->getProgress()->setMessage('Restarting supervisor processes...');
-            Supervisor::restart();
             $cli->getProgress()->advance();
+
+            Supervisor::restart();
         }
 
         // Clean up the progress bar
