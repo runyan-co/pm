@@ -20,6 +20,27 @@ class FileSystem
     }
 
     /**
+     * Move a directory
+     *
+     * @param  string  $from_path
+     * @param  string  $to_path
+     *
+     * @return bool
+     */
+    public function mv(string $from_path, string $to_path): bool
+    {
+        try {
+            Cli::run("mv $from_path $to_path", static function ($error, $output) {
+                throw new RuntimeException($output);
+            });
+
+            return true;
+        } catch (RuntimeException $exception) {
+            return false;
+        }
+    }
+
+    /**
      * Remove a directory
      *
      * @param  string  $path

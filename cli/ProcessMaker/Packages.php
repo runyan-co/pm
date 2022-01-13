@@ -66,10 +66,11 @@ class Packages
 
     /**
      * @param  bool  $enterpriseOnly
+     * @param  string|null  $branch
      *
      * @return array
      */
-    public function getSupportedPackages(bool $enterpriseOnly = false): array
+    public function getSupportedPackages(bool $enterpriseOnly = false, string $branch = null): array
     {
         if (!$this->packageExists('packages')) {
             $this->clonePackage('packages');
@@ -82,7 +83,7 @@ class Packages
         $packages_package_path = $packages_package['path'];
 
         // Make sure we're on the right branch
-        $defaultBranch = Git::getDefaultBranch($packages_package_path);
+        $defaultBranch = $branch ?? Git::getDefaultBranch($packages_package_path);
         $branchSwitchResult = Git::switchBranch($defaultBranch, $packages_package_path);
 
         // Find and decode composer.json
@@ -106,15 +107,21 @@ class Packages
         // prepended as other packages rely on them if the order
         // returned is the order installed
         $supported_packages = collect($supported_packages)->values()->sort()->reject(static function ($package) {
-            return $package === 'docker-executor-node-ssr'
-                || $package === 'connector-send-email'
-                || $package === 'packages';
+            return in_array($package, [
+                'docker-executor-node-ssr',
+                'connector-send-email',
+                'package-collections',
+                'package-savedsearch',
+                'packages'
+            ]);
         });
 
         // Prepend the removed packages so they're installed
         // first, assuming the returned order is relied on
         // for installation
-        return $supported_packages->prepend('connector-send-email')
+        return $supported_packages->prepend('package-collections')
+                                  ->prepend('package-savedsearch')
+                                  ->prepend('connector-send-email')
                                   ->prepend('docker-executor-node-ssr')
                                   ->prepend('packages')
                                   ->toArray();
@@ -138,7 +145,7 @@ class Packages
             $this->files->rmdir(Config::packagesPath()."/$name");
         }
 
-        $command = "git clone https://github.com/ProcessMaker/$name";
+        $command = "git clone https://github.com/processmaker/$name";
 
         $output = $this->cli->run($command, function ($code, $out) use ($name) {
             throw new RuntimeException("Failed to clone $name: ".PHP_EOL.$out);
@@ -476,7 +483,7 @@ class Packages
         }
 
         // Grab the list of supported enterprise packages
-        $enterprise_packages = new Collection($this->getSupportedPackages(true));
+        $enterprise_packages = new Collection($this->getSupportedPackages(true, $branch));
 
         if ($for_41_develop) {
             // Filter out any packages not on the 4.1-develop
@@ -491,14 +498,12 @@ class Packages
         }
 
         // Key by package name
-        $enterprise_packages = $enterprise_packages->keyBy(static function ($package, $index) {
-            return $package;
-        });
+        $enterprise_packages = $enterprise_packages->keyBy(fn($package) => $package);
 
         // Build the stack of commands to run
         return $enterprise_packages->transform(static function (string $package) {
             return new Collection([
-                "composer require processmaker/$package --no-interaction",
+                "composer require processmaker/$package --no-interaction -W",
                 PHP_BINARY." artisan $package:install --no-interaction",
                 PHP_BINARY." artisan vendor:publish --tag=$package --no-interaction"
             ]);

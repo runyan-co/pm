@@ -31,6 +31,41 @@ function warningThenExit(string $output, int $exitCode = 0): string {
 }
 
 /**
+ * Create a temporary directory
+ *
+ * @param $dir
+ * @param $prefix
+ * @param $mode
+ * @param $maxAttempts
+ *
+ * @return false|string
+ * @throws \Exception
+ */
+function tmpdir($dir = null, $prefix = 'tmp_', $mode = 0700, $maxAttempts = 100) {
+    if (is_null($dir)) {
+        $dir = sys_get_temp_dir();
+    }
+
+    $dir = rtrim($dir, DIRECTORY_SEPARATOR);
+
+    if (!is_dir($dir) || !is_writable($dir)) {
+        return false;
+    }
+
+    if (strpbrk($prefix, '\\/:*?"<>|') !== false) {
+        return false;
+    }
+
+    $attempts = 0;
+
+    do {
+        $path = sprintf('%s%s%s%s', $dir, DIRECTORY_SEPARATOR, $prefix, \random_int(100000, mt_getrandmax()));
+    } while (!mkdir($path, $mode) && $attempts++ < $maxAttempts);
+
+    return $path;
+}
+
+/**
  * Resolve the given class from the container.
  *
  * @param  string  $class
