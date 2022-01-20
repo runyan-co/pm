@@ -346,7 +346,8 @@ if (!FileSystem::isDir(PM_HOME_PATH)) {
 	 * |                                                |
 	 * -------------------------------------------------+
 	 */
-    $app->command('core:install-packages [-4|--for_41_develop]', function (InputInterface $input, OutputInterface $output) {
+    $app->command('core:install-packages [-4|--for_41_develop]',
+	    function (InputInterface $input, OutputInterface $output) {
 
         // Indicates if we should install the 4.1-develop
         // versions of each package or the 4.2
@@ -512,7 +513,7 @@ if (!FileSystem::isDir(PM_HOME_PATH)) {
         $verbose = $input->getOption('verbose');
 
         // Put everything together and run it
-        $for_41_develop ? Packages::pull41($verbose) : Packages::pull($verbose);
+        Packages::pull($verbose, $for_41_develop ? '4.1-develop' : null);
 
     })->descriptions('Resets and updates the locally stored ProcessMaker 4 composer packages to the latest from GitHub.',
         ['--for_41_develop' => 'Change each package to the correct version for the 4.1 version of processmaker/processmaker']

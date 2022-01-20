@@ -83,8 +83,8 @@ class Packages
         $packages_package_path = $packages_package['path'];
 
         // Make sure we're on the right branch
-        $defaultBranch = $branch ?? Git::getDefaultBranch($packages_package_path);
-        $branchSwitchResult = Git::switchBranch($defaultBranch, $packages_package_path);
+        $branch = $branch ?? Git::getDefaultBranch($packages_package_path);
+        $branchSwitchResult = Git::switchBranch($branch, $packages_package_path);
 
         // Find and decode composer.json
         $composer_json = Composer::getComposerJson($packages_package_path);
@@ -106,7 +106,7 @@ class Packages
         // Sort it and and remove two packages so they can be
         // prepended as other packages rely on them if the order
         // returned is the order installed
-        $supported_packages = collect($supported_packages)->values()->sort()->reject(static function ($package) {
+        $supported_packages = collect($supported_packages)->values()->sort()->reject(function ($package) {
             return in_array($package, [
                 'docker-executor-node-ssr',
                 'connector-send-email',
@@ -208,7 +208,7 @@ class Packages
             $package_directory = Config::packagesPath();
         }
 
-        return array_filter($this->files->scandir($package_directory), function ($dir) use($package_directory) {
+        return array_filter($this->files->scandir($package_directory), function ($dir) use ($package_directory) {
 
             // Set the absolute path to the file or directory
             $dir = $package_directory.'/'.$dir;
@@ -270,16 +270,6 @@ class Packages
 
         // Remove unnecessary end of line character(s)
         return Str::replace(["\n", PHP_EOL], "", $branch);
-    }
-
-    /**
-     * @param  bool  $verbose
-     *
-     * @throws \Illuminate\Contracts\Container\BindingResolutionException
-     */
-    public function pull41(bool $verbose = false)
-    {
-        $this->pull($verbose, '4.1-develop');
     }
 
     /**
@@ -485,25 +475,10 @@ class Packages
         // Grab the list of supported enterprise packages
         $enterprise_packages = new Collection($this->getSupportedPackages(true, $branch));
 
-        if ($for_41_develop) {
-            // Filter out any packages not on the 4.1-develop
-            // branch which aren't compatible with 4.1
-            $enterprise_packages = $enterprise_packages->reject(function ($package) {
-                if ($package === 'docker-executor-node-ssr') {
-                    return false;
-                }
-
-                return '4.1-develop' !== Git::getCurrentBranchName($this->getPackagePath($package));
-            });
-        }
-
-        // Key by package name
-        $enterprise_packages = $enterprise_packages->keyBy(fn($package) => $package);
-
         // Build the stack of commands to run
-        return $enterprise_packages->transform(static function (string $package) {
+        return $enterprise_packages->keyBy(fn($package) => $package)->transform(function (string $package) {
             return new Collection([
-                "composer require processmaker/$package --no-interaction -W",
+                "composer require processmaker/$package --no-interaction",
                 PHP_BINARY." artisan $package:install --no-interaction",
                 PHP_BINARY." artisan vendor:publish --tag=$package --no-interaction"
             ]);
