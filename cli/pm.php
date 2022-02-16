@@ -18,11 +18,11 @@ use Symfony\Component\Console\Question\ConfirmationQuestion;
 use Symfony\Component\Console\Question\Question;
 
 use ProcessMaker\Facades\ {
-	Reset, Config, Install, Packages, PackagesCi, FileSystem, Supervisor, Docker, Git
+	Reset, Config, Install, Packages, PackagesCi, FileSystem, Supervisor, Git
 };
 
 use function ProcessMaker\Cli\ {
-    info, table, output, resolve, warning, warningThenExit, tmpdir
+    info, table, output, resolve, warning, warningThenExit, pm_path
 };
 
 Container::setInstance(new Container);
@@ -108,18 +108,6 @@ if (!FileSystem::isDir(PM_HOME_PATH)) {
     })->descriptions('Runs the installation process for this tool. Necessary before other commands will appear.');
 
 } else {
-
-    /*
-	 * -------------------------------------------------+
-	 * |                                                |
-	 * |    Command: Docker                             |
-	 * |                                                |
-	 * -------------------------------------------------+
-	 */
-	$app->command('docker:test', function (InputInterface $input, OutputInterface $output) {
-		$images = Docker::getDockerImages();
-		$needed_image = 'openapitools/openapi-generator-cli:v4.2.2';
-	});
 
     /*
 	 * -------------------------------------------------+
@@ -252,7 +240,7 @@ if (!FileSystem::isDir(PM_HOME_PATH)) {
             $cli->getProgress()->setMessage('Copying IDE settings...');
             $cli->getProgress()->advance();
 
-			FileSystem::mv($ide_config_path, $tmp = tmpdir());
+			FileSystem::mv($ide_config_path, $ide_config_path = pm_path('.idea'));
 		}
 
 		// Remove old codebase
@@ -268,12 +256,12 @@ if (!FileSystem::isDir(PM_HOME_PATH)) {
 		Git::clone('processmaker', Str::replaceLast('processmaker', '', Config::codebasePath()));
 
         // Re-add the IDE settings (if they existed to begin with)
-        if ($ide_config && isset($tmp)) {
+        if ($ide_config && isset($ide_config_path)) {
             $cli->getProgress()->setMessage('Re-adding IDE settings...');
             $cli->getProgress()->advance();
 
-            FileSystem::mv("$tmp/.idea", Config::codebasePath());
-			FileSystem::unlink($tmp);
+            FileSystem::mv($ide_config_path, Config::codebasePath());
+			FileSystem::unlink($ide_config_path);
         }
 
 		// Iterate through them and execute

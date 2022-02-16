@@ -4,6 +4,7 @@ namespace ProcessMaker\Cli;
 
 use RuntimeException;
 use Illuminate\Container\Container;
+use ProcessMaker\Facades\Config;
 use ProcessMaker\Facades\CommandLine as Cli;
 use Symfony\Component\Console\Helper\Table;
 use Symfony\Component\Console\Output\ConsoleOutput;
@@ -63,6 +64,18 @@ function tmpdir($dir = null, $prefix = 'tmp_', $mode = 0700, $maxAttempts = 100)
     } while (!mkdir($path, $mode) && $attempts++ < $maxAttempts);
 
     return $path;
+}
+
+function pm_path(string $filename = null) {
+    return PM_HOME_PATH . ($filename ? DIRECTORY_SEPARATOR . $filename : '');
+}
+
+function codebase_path(string $filename = null) {
+    return Config::codebasePath($filename);
+}
+
+function packages_path(string $filename = null) {
+    return Config::packagesPath($filename);
 }
 
 /**

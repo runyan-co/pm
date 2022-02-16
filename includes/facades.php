@@ -89,11 +89,6 @@ class Supervisor extends Facade {}
 class Reset extends Facade {}
 
 /**
- * @see \ProcessMaker\Cli\Docker
- */
-class Docker extends Facade {}
-
-/**
  * @see \ProcessMaker\Cli\Log
  */
 class Log extends Facade {}
