@@ -16,14 +16,21 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Question\ConfirmationQuestion;
 use Symfony\Component\Console\Question\Question;
-
-use ProcessMaker\Facades\ {
-	Reset, Config, Install, Packages, PackagesCi, FileSystem, Supervisor, Git
-};
-
-use function ProcessMaker\Cli\ {
-    info, table, output, resolve, warning, warningThenExit, pm_path
-};
+use ProcessMaker\Facades\Reset;
+use ProcessMaker\Facades\Config;
+use ProcessMaker\Facades\Install;
+use ProcessMaker\Facades\Packages;
+use ProcessMaker\Facades\ContinuousIntegration;
+use ProcessMaker\Facades\FileSystem;
+use ProcessMaker\Facades\Supervisor;
+use ProcessMaker\Facades\Git;
+use function ProcessMaker\Cli\info;
+use function ProcessMaker\Cli\table;
+use function ProcessMaker\Cli\output;
+use function ProcessMaker\Cli\resolve;
+use function ProcessMaker\Cli\warning;
+use function ProcessMaker\Cli\warningThenExit;
+use function ProcessMaker\Cli\pm_path;
 
 Container::setInstance(new Container);
 
@@ -37,7 +44,7 @@ $app = new Application('ProcessMaker CLI Tool', '0.5.0');
  * -------------------------------------------------+
  */
 $app->command('ci:install-packages', function() {
-    PackagesCi::install();
+    ContinuousIntegration::install();
 });
 
 if (!FileSystem::isDir(PM_HOME_PATH)) {

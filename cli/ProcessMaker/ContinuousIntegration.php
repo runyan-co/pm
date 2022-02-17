@@ -5,7 +5,12 @@ namespace ProcessMaker\Cli;
 use ProcessMaker\Facades\Git;
 use ProcessMaker\Facades\Config;
 
-class PackagesCi {
+class ContinuousIntegration
+{
+    /**
+     * @return void
+     * @throws \Illuminate\Contracts\Container\BindingResolutionException
+     */
     public function install()
     {
         $packages = resolve(Packages::class);
@@ -19,10 +24,16 @@ class PackagesCi {
         Composer::addRepositoryPath();
 
         $listString = $this->composerRequireList($list);
+
         Composer::require($listString);
     }
 
-    private function composerRequireList($list)
+    /**
+     * @param  array  $list
+     *
+     * @return string
+     */
+    private function composerRequireList(array $list)
     {
         return collect($list)->map(function($package) {
             return "processmaker/$package";

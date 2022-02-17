@@ -14,6 +14,7 @@ use ProcessMaker\Facades\Config;
 
 class Packages
 {
+
     public $cli, $files, $composer;
 
     /**
@@ -27,7 +28,7 @@ class Packages
         'nayra',
         'docker-executor-lua',
         'docker-executor-php',
-        'docker-executor-node'
+        'docker-executor-node',
     ];
 
     public function __construct(CommandLine $cli, FileSystem $files)
@@ -46,8 +47,7 @@ class Packages
         if (Str::contains($name, 'processmaker/')) {
             $name = Str::replace('processmaker/', '', $name);
         }
-
-        if (!array_key_exists($name, $this->getPackages())) {
+        if (! array_key_exists($name, $this->getPackages())) {
             throw new LogicException("Package with name \"$name\" does not exist locally.");
         }
 
@@ -72,37 +72,31 @@ class Packages
      */
     public function getSupportedPackages(bool $enterpriseOnly = false, string $branch = null): array
     {
-        if (!$this->packageExists('packages')) {
+        if (! $this->packageExists('packages')) {
             $this->clonePackage('packages');
         }
-
         // We need the packages meta-package to get the
         // list of supported enterprise packages that
         // ProcessMaker 4 is compatible with
         $packages_package = $this->getPackage('packages');
         $packages_package_path = $packages_package['path'];
-
         // Make sure we're on the right branch
         $branch = $branch ?? Git::getDefaultBranch($packages_package_path);
         $branchSwitchResult = Git::switchBranch($branch, $packages_package_path);
-
         // Find and decode composer.json
         $composer_json = Composer::getComposerJson($packages_package_path);
-
         try {
             // We want just the package names for now
             $supported_packages = array_keys(get_object_vars($composer_json->extra->processmaker->enterprise));
         } catch (Exception $exception) {
             throw new LogicException('Enterprise packages not found in processmaker/packages composer.json');
         }
-
-        if (!$enterpriseOnly) {
+        if (! $enterpriseOnly) {
             // Merge the supported enterprise package names with
             // the handful of other packages required for the
             // primary (processmaker/processmaker) app to function
             $supported_packages = array_merge($supported_packages ?? [], self::$additionalPackages);
         }
-
         // Sort it and and remove two packages so they can be
         // prepended as other packages rely on them if the order
         // returned is the order installed
@@ -112,10 +106,9 @@ class Packages
                 'connector-send-email',
                 'package-collections',
                 'package-savedsearch',
-                'packages'
+                'packages',
             ]);
         });
-
         // Prepend the removed packages so they're installed
         // first, assuming the returned order is relied on
         // for installation
@@ -136,17 +129,13 @@ class Packages
     public function clonePackage(string $name, bool $force = false): bool
     {
         $name = Str::replace('processmaker/', '', $name);
-
-        if (!$force && $this->packageExists($name)) {
+        if (! $force && $this->packageExists($name)) {
             throw new LogicException("Package already exists: processmaker/$name");
         }
-
         if ($force) {
             $this->files->rmdir(Config::packagesPath()."/$name");
         }
-
         $command = "git clone https://github.com/processmaker/$name";
-
         $output = $this->cli->run($command, function ($code, $out) use ($name) {
             throw new RuntimeException("Failed to clone $name: ".PHP_EOL.$out);
         }, Config::packagesPath());
@@ -170,12 +159,11 @@ class Packages
                 $this->files->rmdir($package['path']);
             }
         }
-
         // Clone down the processmaker/packages meta-package to
         // to make sure we can reference all official supported
         // ProcessMaker 4 enterprise packages
-        if (!$this->packageExists('packages')) {
-             $this->clonePackage('packages');
+        if (! $this->packageExists('packages')) {
+            $this->clonePackage('packages');
         }
 
         return $this->getSupportedPackages();
@@ -204,17 +192,16 @@ class Packages
      */
     public function getPackagesListFromDirectory(string $package_directory = null): array
     {
-        if (!is_string($package_directory)) {
+        if (! is_string($package_directory)) {
             $package_directory = Config::packagesPath();
         }
 
         return array_filter($this->files->scandir($package_directory), function ($dir) use ($package_directory) {
-
             // Set the absolute path to the file or directory
             $dir = $package_directory.'/'.$dir;
 
             // Filter out any non-directory files
-            return $this->files->isDir($dir) && !is_file($dir);
+            return $this->files->isDir($dir) && ! is_file($dir);
         });
     }
 
@@ -229,7 +216,7 @@ class Packages
         $packages = array_map(function ($package_name) {
             return [
                 'name' => $package_name,
-                'path' => Config::packagesPath() . "/$package_name"
+                'path' => Config::packagesPath()."/$package_name",
             ];
         }, $this->getPackagesListFromDirectory());
 
@@ -245,9 +232,10 @@ class Packages
      */
     public function getPackageVersion(string $package_directory): string
     {
-        $composer_json = Composer::getComposerJson($package_directory) ?? new class {};
+        $composer_json = Composer::getComposerJson($package_directory) ?? new class {
 
-        if (!property_exists($composer_json, 'version')) {
+            };
+        if (! property_exists($composer_json, 'version')) {
             return '...';
         }
 
@@ -261,10 +249,9 @@ class Packages
      */
     public function getCurrentGitBranchName(string $path): string
     {
-        if (!$this->files->isDir($path)) {
+        if (! $this->files->isDir($path)) {
             return '...';
         }
-
         // Run this command and get the current git branch
         $branch = $this->cli->run('git rev-parse --abbrev-ref HEAD', null, $path);
 
@@ -284,17 +271,21 @@ class Packages
     public function takePackagesSnapshot(bool $updated = false, array $metadata = []): array
     {
         foreach ($this->getPackages() as $package) {
-
             $path = $package['path'];
-            $version_key = $updated ? 'updated_version' : 'version';
-            $branch_key = $updated ? 'updated_branch' : 'branch';
-            $hash_key = $updated ? 'updated_commit_hash' : 'commit_hash';
-
+            $version_key = $updated
+                ? 'updated_version'
+                : 'version';
+            $branch_key = $updated
+                ? 'updated_branch'
+                : 'branch';
+            $hash_key = $updated
+                ? 'updated_commit_hash'
+                : 'commit_hash';
             $metadata[$package['name']] = [
                 'name' => $package['name'],
                 $version_key => $this->getPackageVersion($path),
                 $branch_key => $this->getCurrentGitBranchName($path),
-                $hash_key => Git::getCurrentCommitHash($path)
+                $hash_key => Git::getCurrentCommitHash($path),
             ];
         }
 
@@ -310,16 +301,18 @@ class Packages
     public function buildPullCommands(string $branch, array $commands = []): array
     {
         foreach ($this->getPackages() as $package) {
+            $name = $package['name'];
+            $path = $package['path'];
+
             $package_commands = [
+                "if [[ -d ./.idea ]]; then mkdir ../$name && mv .idea ../$name; fi",
                 'git reset --hard',
                 'git clean -d -f .',
                 'git fetch --all',
                 "git checkout $branch",
                 'git pull --force',
+                "if [[ -d ../$name/.idea ]]; mv ../$name/.idea . && rm -r ../$name; fi"
             ];
-
-            $name = $package['name'];
-            $path = $package['path'];
 
             $commands[$name] = array_map(static function ($command) use ($path) {
                 return "cd $path && $command";
@@ -368,13 +361,11 @@ class Packages
     public function getPackagesTableData(): array
     {
         $table = [];
-
         // Build the table rows by merging the compare-with
         // package metadata with a recent snapshot
         foreach ($this->takePackagesSnapshot() as $package => $updated) {
             $table[$package] = $updated;
         }
-
         // Sort the columns in a more sensible way
         foreach ($table as $key => $row) {
             $table[$key] = [
@@ -394,12 +385,10 @@ class Packages
     public function outputPullResults(array $pre_pull_package_metadata)
     {
         $table = [];
-
         // Build the table rows
         foreach ($this->takePackagesSnapshot(true) as $package => $updated) {
             $table[$package] = array_merge($pre_pull_package_metadata[$package], $updated);
         }
-
         // Sort the columns in a more sensible way
         foreach ($table as $key => $row) {
             $table[$key] = [
@@ -409,38 +398,31 @@ class Packages
                 'branch' => $row['branch'],
                 'updated_branch' => $row['updated_branch'],
                 'commit_hash' => $row['commit_hash'],
-                'updated_commit_hash' => $row['updated_commit_hash']
+                'updated_commit_hash' => $row['updated_commit_hash'],
             ];
         }
-
         // Add console styling
         foreach ($table as $key => $row) {
-
             // Highlight the package name
             $table[$key]['name'] = '<fg=cyan>'.$row['name'].'</>';
-
             // If the versions are the same, no updated occurred.
             // If they are different, let's make it easier to see.
             if ($row['version'] !== $row['updated_version']) {
                 $table[$key]['updated_version'] = '<info>'.$row['updated_version'].'</info>';
             }
-
             // Do the same thing with branches, since we may
             // have switch to 4.1 or 4.2 during the pull, which
             // is set by the user by adding a flag to the command
             if ($row['branch'] !== $row['updated_branch']) {
                 $table[$key]['updated_branch'] = '<info>'.$row['updated_branch'].'</info>';
             }
-
             // One more time to see if the commit hash has changed
             if ($row['commit_hash'] !== $row['updated_commit_hash']) {
                 $table[$key]['updated_commit_hash'] = '<info>'.$row['updated_commit_hash'].'</info>';
             }
         }
-
         // Add a new line for space above the table
         output(PHP_EOL);
-
         // Format our results in an easy-to-ready table
         table(['Name', 'Version ->', '-> Version', 'Branch ->', '-> Branch', 'Hash ->', '-> Hash'], $table);
     }
@@ -456,32 +438,31 @@ class Packages
      */
     public function buildPackageInstallCommands(bool $for_41_develop = false, bool $force = false): Collection
     {
-        if (!$this->files->isDir(Config::codebasePath())) {
-            throw new LogicException('Could not find ProcessMaker codebase: '. Config::codebasePath());
+        if (! $this->files->isDir(Config::codebasePath())) {
+            throw new LogicException('Could not find ProcessMaker codebase: '.Config::codebasePath());
         }
-
         // Find out which branch to switch to in the local
         // processmaker/processmaker codebase
-        $branch = $for_41_develop ? '4.1-develop' : 'develop';
-
+        $branch = $for_41_develop
+            ? '4.1-develop'
+            : 'develop';
         // Find out which branch we're on
         $current_branch = Git::getCurrentBranchName(Config::codebasePath());
-
         // Make sure we're on the right branch
         if ($current_branch !== $branch && ! $force) {
             throw new DomainException("Core codebase branch should be \"$branch\" but \"$current_branch\" was found.");
         }
-
         // Grab the list of supported enterprise packages
         $enterprise_packages = new Collection($this->getSupportedPackages(true, $branch));
 
         // Build the stack of commands to run
         return $enterprise_packages->keyBy(fn($package) => $package)->transform(function (string $package) {
             return new Collection([
-                "composer require processmaker/$package --no-interaction",
+                COMPOSER_BINARY." require processmaker/$package --no-interaction",
                 PHP_BINARY." artisan $package:install --no-interaction",
-                PHP_BINARY." artisan vendor:publish --tag=$package --no-interaction"
+                PHP_BINARY." artisan vendor:publish --tag=$package --no-interaction",
             ]);
         })->put('horizon', new Collection([PHP_BINARY.' artisan horizon:terminate']));
     }
+
 }

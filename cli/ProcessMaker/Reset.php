@@ -3,6 +3,7 @@
 namespace ProcessMaker\Cli;
 
 use DomainException;
+use ProcessMaker\Facades\CommandLine as Cli;
 use ProcessMaker\Facades\Config;
 use Illuminate\Support\Str;
 
@@ -50,7 +51,7 @@ class Reset
             ? ['database' => [$this->buildDropAndCreateSqlCommand()]]
             : [];
 
-        $dockerExecutable = $this->findExecutable('docker');
+        $dockerExecutable = Cli::findExecutable('docker');
 
         // todo Need to update the core repo to set the docker executable location as an arg for the artisan install command
         $formatEnvExampleCommand = [];
@@ -78,11 +79,6 @@ class Reset
             $artisanInstallCommands,
             $npmCommands
         ));
-    }
-
-    public function findExecutable(string $executable_name): string
-    {
-        return Str::replace([PHP_EOL, "\n"], '', $this->cli->run("which $executable_name"));
     }
 
     /**
@@ -168,15 +164,15 @@ EOFMYSQL";
             'API_SSL_VERIFY=0',
             'CACHE_DRIVER=redis',
             'DOCKER_HOST_URL=http://host.docker.internal',
-            'PROCESSMAKER_SCRIPTS_TIMEOUT='.$this->findExecutable('timeout'),
-            'PROCESSMAKER_SCRIPTS_DOCKER='.$this->findExecutable('docker'),
+            'PROCESSMAKER_SCRIPTS_TIMEOUT='.Cli::findExecutable('timeout'),
+            'PROCESSMAKER_SCRIPTS_DOCKER='.Cli::findExecutable('docker'),
             'SESSION_DRIVER=redis',
             'SESSION_SECURE_COOKIE=false',
             'SESSION_DOMAIN=processmaker.test',
             'LARAVEL_ECHO_SERVER_PROTO=http',
             'LARAVEL_ECHO_SERVER_SSL_KEY=""',
             'LARAVEL_ECHO_SERVER_SSL_CERT=""',
-            'NODE_BIN_PATH='.$this->findExecutable('node'),
+            'NODE_BIN_PATH='.Cli::findExecutable('node'),
         ];
 
         $env_contents = $this->files->get($path);

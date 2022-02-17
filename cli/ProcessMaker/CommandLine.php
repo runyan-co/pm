@@ -2,6 +2,7 @@
 
 namespace ProcessMaker\Cli;
 
+use Illuminate\Support\Str;
 use Symfony\Component\Process\Process;
 use Symfony\Component\Console\Helper\ProgressBar;
 use Symfony\Component\Console\Output\ConsoleOutput;
@@ -13,6 +14,18 @@ class CommandLine
     public function __construct()
     {
         $this->time = microtime(true);
+    }
+
+    /**
+     * Returns absolute path of an executable by name
+     *
+     * @param  string  $executable_name
+     *
+     * @return string
+     */
+    public function findExecutable(string $executable_name): string
+    {
+        return Str::replace([PHP_EOL, "\n"], '', $this->run("which $executable_name"));
     }
 
     /**

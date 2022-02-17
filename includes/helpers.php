@@ -21,6 +21,10 @@ if (!defined('USER_HOME')) {
     define('USER_HOME', getenv('HOME'));
 }
 
+if (!defined('COMPOSER_BINARY')) {
+    define('COMPOSER_BINARY', Cli::findExecutable('composer'));
+}
+
 /**
  * @param  string  $output
  * @param  int  $exitCode
@@ -106,11 +110,7 @@ function swap(string $class, $instance) {
  * @return mixed
  */
 function user() {
-    if (! isset($_SERVER['SUDO_USER'])) {
-        return $_SERVER['USER'];
-    }
-
-    return $_SERVER['SUDO_USER'];
+    return $_SERVER['SUDO_USER'] ?? $_SERVER['USER'];
 }
 
 /**
