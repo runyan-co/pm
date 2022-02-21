@@ -6,9 +6,9 @@ use ProcessMaker\Facades\CommandLine as Cli;
 
 class Install
 {
-    public $files;
+    public FileSystem $files;
 
-    public $bin = HOMEBREW_PREFIX.'/bin/pm';
+    public string $bin = HOMEBREW_PREFIX.'/bin/pm';
 
     public function __construct(FileSystem $files)
     {

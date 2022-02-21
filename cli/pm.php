@@ -45,7 +45,7 @@ $app = new Application('ProcessMaker CLI Tool', '0.5.0');
  */
 $app->command('ci:install-packages', function() {
     ContinuousIntegration::install();
-});
+})->descriptions('Intended to use with CircleCi to install necessary enterprise packages for testing');
 
 if (!FileSystem::isDir(PM_HOME_PATH)) {
     /*
