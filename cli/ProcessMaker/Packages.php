@@ -298,10 +298,10 @@ class Packages
                 : 'commit_hash';
 
             $metadata[$package['name']] = [
-                'name' => $package['name'],
-                $version_key => $this->getPackageVersion($path),
-                $branch_key => $this->getCurrentGitBranchName($path),
-                $hash_key => Git::getCurrentCommitHash($path),
+                'name' /*********/ => $package['name'],
+                $version_key /***/ => $this->getPackageVersion($path),
+                $branch_key /****/ => $this->getCurrentGitBranchName($path),
+                $hash_key /******/ => Git::getCurrentCommitHash($path),
             ];
         }
 

@@ -8,9 +8,15 @@ use Illuminate\Support\Collection;
 
 class ProcessManager
 {
-    private $processCollections, $outputCollection, $finalCallback, $cli;
+    public $finalCallback;
 
-    public $verbose = false;
+    public bool $verbose = false;
+
+    protected Collection $processCollections;
+
+    protected Collection $outputCollection;
+
+    protected CommandLine $cli;
 
     public function __construct(
         CommandLine $cli,
