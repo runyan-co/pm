@@ -177,8 +177,7 @@ if (! FileSystem::isDir(PM_HOME_PATH)) {
     * |                                                |
     * -------------------------------------------------+
     */
-    $app->command(
-        'core:reset [branch] [-d|--bounce-database] [--no-npm] [-y|--yes]',
+    $app->command('core:reset [branch] [-d|--bounce-database] [--no-npm] [-y|--yes]',
         function (InputInterface $input, OutputInterface $output): void {
 
             $branch = $input->getArgument('branch') ?? 'develop';
@@ -186,7 +185,6 @@ if (! FileSystem::isDir(PM_HOME_PATH)) {
             $no_npm = $input->getOption('no-npm') ?? false;
             $no_confirmation = $input->getOption('yes') ?? false;
             $bounce_database = $input->getOption('bounce-database') ?? false;
-
             $helper = $this->getHelperSet()->get('question');
             $question = new ConfirmationQuestion('<comment>Warning:</comment> This will remove all changes to the core codebase and reset the database. Continue? <info>(yes/no)</info> ', false);
 

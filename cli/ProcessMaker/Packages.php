@@ -401,12 +401,12 @@ class Packages
 
         // Build the table rows
         foreach ($this->takePackagesSnapshot(true) as $package => $updated) {
-            $table->$package = array_merge($pre_pull_package_metadata[$package], $updated);
+            $table->$package = (object) array_merge($pre_pull_package_metadata[$package], $updated);
         }
 
         // Sort the columns in a more sensible way
         foreach ($table as $key => $row) {
-            $table->$key = [
+            $table->$key = (object) [
                 'name' => $row->name,
                 'version' => $row->version,
                 'updated_version' => $row->updated_version,
@@ -420,32 +420,40 @@ class Packages
         // Add console styling
         foreach ($table as $key => $row) {
             // Highlight the package name
-            $table->$key['name'] = "<fg=cyan>{$row->name}</>";
+            $table->$key->name = "<fg=cyan>{$row->name}</>";
 
             // If the versions are the same, no updated occurred.
             // If they are different, let's make it easier to see.
             if ($row->version !== $row->updated_version) {
-                $table->$key['updated_version'] = "<info>{$row->updated_version}</info>";
+                $table->$key->updated_version = "<info>{$row->updated_version}</info>";
             }
 
             // Do the same thing with branches, since we may
             // have switch to 4.1 or 4.2 during the pull, which
             // is set by the user by adding a flag to the command
             if ($row->branch !== $row->updated_branch) {
-                $table->$key['updated_branch'] = "<info>{$row->updated_branch}</info>";
+                $table->$key->updated_branch = "<info>{$row->updated_branch}</info>";
             }
 
             // One more time to see if the commit hash has changed
             if ($row->commit_hash !== $row->updated_commit_hash) {
-                $table->$key['updated_commit_hash'] = "<info>{$row->updated_commit_hash}</info>";
+                $table->$key->updated_commit_hash = "<info>{$row->updated_commit_hash}</info>";
             }
+        }
+
+        // Change the objects back into arrays
+        foreach ($table as $key => $row) {
+            $table->$key = (array) $row;
         }
 
         // Add a new line for space above the table
         output(PHP_EOL);
 
+        // Create the table columns
+        $columns = ['Name', 'Version ->', '-> Version', 'Branch ->', '-> Branch', 'Hash ->', '-> Hash'];
+
         // Format our results in an easy-to-ready table
-        table(['Name', 'Version ->', '-> Version', 'Branch ->', '-> Branch', 'Hash ->', '-> Hash'], (array) $table);
+        table($columns, (array) $table);
     }
 
     /**
