@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace ProcessMaker\Cli;
 
+use Illuminate\Support\Str;
+
 class IDE
 {
     /**
@@ -53,7 +55,11 @@ class IDE
      */
     public function moveConfigurationBack(string $from, ?string $to = null): void
     {
-        if (! $this->files->exists($from) || ! $this->files->exists($to = $to ?? codebase_path())) {
+        if (! $this->files->exists($from)) {
+            return;
+        }
+
+        if (! $this->files->exists($to = $to ?? codebase_path())) {
             return;
         }
 
@@ -61,7 +67,7 @@ class IDE
             return;
         }
 
-        $this->files->unlink($from);
+        $this->files->rmdir(Str::remove(basename($from), $from));
     }
 
     /**

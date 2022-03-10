@@ -247,6 +247,14 @@ if (! FileSystem::isDir(PM_HOME_PATH)) {
                 $cli->getProgress()->advance();
 
                 $ide_config = IDE::temporarilyMoveConfiguration();
+
+				// Make sure we re-add the IDE settings
+	            // in case of a premature shutdown
+				register_shutdown_function(static function () use ($ide_config) {
+					if (FileSystem::exists($ide_config)) {
+                        IDE::moveConfigurationBack($ide_config);
+					}
+				});
             }
 
             // Remove old codebase
