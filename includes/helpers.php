@@ -1,37 +1,39 @@
 <?php
 
+declare(strict_types=1);
+
 namespace ProcessMaker\Cli;
 
-use RuntimeException;
 use Illuminate\Container\Container;
-use ProcessMaker\Facades\Config;
 use ProcessMaker\Facades\CommandLine as Cli;
+use ProcessMaker\Facades\Config;
+use RuntimeException;
 use Symfony\Component\Console\Helper\Table;
 use Symfony\Component\Console\Output\ConsoleOutput;
 
-if (!defined('HOMEBREW_PREFIX')) {
+if (! defined('HOMEBREW_PREFIX')) {
     define('HOMEBREW_PREFIX', Cli::run('printf $(brew --prefix)'));
 }
 
-if (!defined('PM_HOME_PATH')) {
+if (! defined('PM_HOME_PATH')) {
     define('PM_HOME_PATH', $_SERVER['HOME'] . '/.config/pm');
 }
 
-if (!defined('USER_HOME')) {
+if (! defined('USER_HOME')) {
     define('USER_HOME', getenv('HOME'));
 }
 
-if (!defined('COMPOSER_BINARY')) {
+if (! defined('COMPOSER_BINARY')) {
     define('COMPOSER_BINARY', Cli::findExecutable('composer'));
 }
-
 /**
  * @param  string  $output
  * @param  int  $exitCode
  *
  * @return string
  */
-function warningThenExit(string $output, int $exitCode = 0): string {
+function warningThenExit(string $output, int $exitCode = 0): string
+{
     return warning($output) . exit($exitCode);
 }
 
@@ -44,16 +46,18 @@ function warningThenExit(string $output, int $exitCode = 0): string {
  * @param $maxAttempts
  *
  * @return false|string
+ *
  * @throws \Exception
  */
-function tmpdir($dir = null, $prefix = 'tmp_', $mode = 0700, $maxAttempts = 100) {
+function tmpdir($dir = null, $prefix = 'tmp_', $mode = 0700, $maxAttempts = 100)
+{
     if (is_null($dir)) {
         $dir = sys_get_temp_dir();
     }
 
     $dir = rtrim($dir, DIRECTORY_SEPARATOR);
 
-    if (!is_dir($dir) || !is_writable($dir)) {
+    if (! is_dir($dir) || ! is_writable($dir)) {
         return false;
     }
 
@@ -65,85 +69,96 @@ function tmpdir($dir = null, $prefix = 'tmp_', $mode = 0700, $maxAttempts = 100)
 
     do {
         $path = sprintf('%s%s%s%s', $dir, DIRECTORY_SEPARATOR, $prefix, \random_int(100000, mt_getrandmax()));
-    } while (!mkdir($path, $mode) && $attempts++ < $maxAttempts);
+    } while (! mkdir($path, $mode) && $attempts++ < $maxAttempts);
 
     return $path;
 }
 
-function pm_path(string $filename = null) {
+/**
+ * @param  string|null  $filename
+ *
+ * @return string
+ */
+function pm_path(?string $filename = null)
+{
     return PM_HOME_PATH . ($filename ? DIRECTORY_SEPARATOR . $filename : '');
 }
 
-function codebase_path(string $filename = null) {
+/**
+ * @param  string|null  $filename
+ *
+ * @return mixed
+ */
+function codebase_path(?string $filename = null)
+{
     return Config::codebasePath($filename);
 }
 
-function packages_path(string $filename = null) {
+/**
+ * @param  string|null  $filename
+ *
+ * @return mixed
+ */
+function packages_path(?string $filename = null)
+{
     return Config::packagesPath($filename);
 }
 
 /**
  * Resolve the given class from the container.
  *
- * @param  string  $class
- *
  * @return mixed
+ *
  * @throws \Illuminate\Contracts\Container\BindingResolutionException
  */
-function resolve(string $class) {
+function resolve(string $class)
+{
     return Container::getInstance()->make($class);
 }
 
 /**
  * Swap the given class implementation in the container.
  *
- * @param  string  $class
  * @param  mixed  $instance
- *
- * @return void
  */
-function swap(string $class, $instance) {
+function swap(string $class, $instance): void
+{
     Container::getInstance()->instance($class, $instance);
 }
 
 /**
  * @return mixed
  */
-function user() {
+function user()
+{
     return $_SERVER['SUDO_USER'] ?? $_SERVER['USER'];
 }
 
 /**
  * Verify that the script is currently running as "sudo".
  *
- * @return void
  * @throws \Exception
  */
-function should_be_sudo() {
-    if (!isset($_SERVER['SUDO_USER'])) {
+function should_be_sudo(): void
+{
+    if (! isset($_SERVER['SUDO_USER'])) {
         throw new RuntimeException('This command must be run with sudo.');
     }
 }
 
 /**
  * Output the given text to the console.
- *
- * @param  string  $output
- *
- * @return void
  */
-function info(string $output) {
+function info(string $output): void
+{
     output('<info>'.$output.'</info>');
 }
 
 /**
  * Output the given text to the console.
- *
- * @param  string  $output
- *
- * @return void
  */
-function warning(string $output) {
+function warning(string $output): void
+{
     output('<fg=red>' . $output . '</>');
 }
 
@@ -152,22 +167,19 @@ function warning(string $output) {
  *
  * @param array $headers
  * @param array $rows
- * @return void
  */
-function table(array $headers = [], array $rows = [])  {
-    $table = new Table(new ConsoleOutput);
+function table(array $headers = [], array $rows = []): void
+{
+    $table = new Table(new ConsoleOutput());
     $table->setHeaders($headers)->setRows($rows);
     $table->render();
 }
 
 /**
  * Output the given text to the console.
- *
- * @param  string  $output
- *
- * @return void
  */
-function output(string $output) {
+function output(string $output): void
+{
     if (isset($_ENV['APP_ENV']) && $_ENV['APP_ENV'] === 'testing') {
         return;
     }

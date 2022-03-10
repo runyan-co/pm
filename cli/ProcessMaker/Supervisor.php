@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace ProcessMaker\Cli;
 
 use RuntimeException;
@@ -7,8 +9,11 @@ use Illuminate\Support\Str;
 
 class Supervisor
 {
-    protected $cli;
+    protected CommandLine $cli;
 
+    /**
+     * @param  \ProcessMaker\Cli\CommandLine  $cli
+     */
     public function __construct(CommandLine $cli)
     {
         $this->cli = $cli;
@@ -16,13 +21,11 @@ class Supervisor
 
     /**
      * Checks is supervisord is running and available to receive commands
-     *
-     * @return bool
      */
     public function running(): bool
     {
         try {
-            return is_string($this->cli->run('supervisorctl status', function ($exitCode, $output) {
+            return is_string($this->cli->run('supervisorctl status', function ($exitCode, $output): void {
                 if (Str::contains($output, 'refused connection')) {
                     throw new RuntimeException();
                 }
@@ -40,13 +43,9 @@ class Supervisor
      * If the $process argument is present, attempt to stop a supervisor-controlled process
      * with that name, otherwise stop all supervisor processes.
      *
-     * @param  string|null  $process
-     *
      * @throws \RuntimeException
-     *
-     * @return bool
      */
-    public function stop(string $process = null): bool
+    public function stop(?string $process = null): bool
     {
         if (!$this->running()) {
             return false;
@@ -54,7 +53,7 @@ class Supervisor
 
         $process = $process ?? 'all';
 
-        return is_string($this->cli->run("supervisorctl stop $process", function ($exitCode, $output) {
+        return is_string($this->cli->run("supervisorctl stop {$process}", function ($exitCode, $output): void {
             throw new RuntimeException($output);
         }));
     }
@@ -63,13 +62,9 @@ class Supervisor
      * If the $process argument is present, attempt to restart a supervisor-controlled process
      * with that name, otherwise restart all supervisor processes.
      *
-     * @param  string|null  $process
-     *
      * @throws \RuntimeException
-     *
-     * @return bool
      */
-    public function restart(string $process = null): bool
+    public function restart(?string $process = null): bool
     {
         if (!$this->running()) {
             return false;
@@ -77,7 +72,7 @@ class Supervisor
 
         $process = $process ?? 'all';
 
-        $restarted = $this->cli->run("supervisorctl restart $process", function ($exitCode, $output) {
+        $restarted = $this->cli->run("supervisorctl restart {$process}", function ($exitCode, $output): void {
             throw new RuntimeException($output);
         });
 

@@ -1,11 +1,19 @@
 <?php
 
+declare(strict_types=1);
+
 namespace ProcessMaker\Cli;
 
 use DomainException;
+use Illuminate\Support\Str;
 use ProcessMaker\Facades\CommandLine as Cli;
 use ProcessMaker\Facades\Config;
-use Illuminate\Support\Str;
+
+use function extension_loaded;
+use function implode;
+use function array_map;
+use function array_filter;
+use function array_merge;
 
 class Reset
 {
@@ -20,7 +28,7 @@ class Reset
     ];
 
     protected static array $composerCommands = [
-        COMPOSER_BINARY.' install --optimize-autoloader --no-interaction --no-progress'
+        COMPOSER_BINARY.' install --optimize-autoloader --no-interaction --no-progress',
     ];
 
     protected static array $npmCommands = [
@@ -28,6 +36,10 @@ class Reset
         'npm run dev --non-interactive --quiet',
     ];
 
+    /**
+     * @param  \ProcessMaker\Cli\CommandLine  $cli
+     * @param  \ProcessMaker\Cli\FileSystem  $files
+     */
     public function __construct(CommandLine $cli, FileSystem $files)
     {
         $this->cli = $cli;
@@ -49,7 +61,8 @@ class Reset
 
         $gitCommands = ['git' => array_map(static function ($command) use ($branch) {
             return Str::replace('{branch}', $branch, $command);
-        }, static::$gitCommands)];
+        }, static::$gitCommands),
+        ];
 
         $databaseCommands = $bounce_database
             ? ['database' => [$this->buildDropAndCreateSqlCommand()]]
@@ -63,9 +76,9 @@ class Reset
         if ($this->branch === '4.1-develop') {
             $formatEnvExampleCommand = [
                 '4.1 cleanup' => [
-                    "sed -i -- 's+/usr/bin/docker+$dockerExecutable+g' config/app.php",
-                    "if [ -f config/app.php-- ]; then rm config/app.php--; fi"
-                ]
+                    "sed -i -- 's+/usr/bin/docker+${dockerExecutable}+g' config/app.php",
+                    'if [ -f config/app.php-- ]; then rm config/app.php--; fi',
+                ],
             ];
         }
 
@@ -88,8 +101,6 @@ class Reset
     /**
      * The ProcessMaker artisan install command with the arguments
      * pre-populated (speeds everything up quite a bit)
-     *
-     * @return string
      */
     public function buildArtisanInstallCommands(): string
     {
@@ -114,15 +125,15 @@ class Reset
             '--username=admin',
             '--first-name=Change',
             '--last-name=Maker',
-            "--redis-client=$redis_driver",
-            '--redis-host=127.0.0.1'
+            "--redis-client={$redis_driver}",
+            '--redis-host=127.0.0.1',
         ];
 
         if ($this->branch !== '4.1-develop') {
             $install_command[] = '--session-domain=';
         }
 
-        return implode(" ", $install_command).';';
+        return implode(' ', $install_command).';';
     }
 
     /**
@@ -131,30 +142,32 @@ class Reset
      *
      * @return string
      */
-    public function buildDropAndCreateSqlCommand(string $db_name = 'processmaker', string $mysql_user = 'root'): string
+    public function buildDropAndCreateSqlCommand(
+        string $db_name = 'processmaker',
+        string $mysql_user = 'root'): string
     {
-        return "mysql -u $mysql_user <<EOFMYSQL
-DROP DATABASE $db_name;
+        return "mysql -u ${mysql_user} <<EOFMYSQL
+DROP DATABASE ${db_name};
 EOFMYSQL
 
-        mysql -u $mysql_user <<EOFMYSQL
-CREATE DATABASE $db_name;
+        mysql -u ${mysql_user} <<EOFMYSQL
+CREATE DATABASE ${db_name};
 EOFMYSQL";
     }
 
     /**
-     * @param  string  $path
+     * @param  string|null  $path
      *
      * @return void
      */
-    public function formatEnvFile(string $path = null): void
+    public function formatEnvFile(?string $path = null): void
     {
         if (!$path) {
             $path = Config::codebasePath('.env');
         }
 
-        if (!$this->files->exists($path)) {
-            throw new DomainException(".env file could not be found: $path");
+        if (! $this->files->exists($path)) {
+            throw new DomainException(".env file could not be found: {$path}");
         }
 
         $find_and_remove = [
@@ -184,7 +197,7 @@ EOFMYSQL";
         // Search for and remove the any of the strings
         // found in the $find_and_remove array
         foreach ($find_and_remove as $search_for) {
-            $env_contents = Str::replace("$search_for\n", '', $env_contents);
+            $env_contents = Str::replace("${search_for}\n", '', $env_contents);
         }
 
         // Append the remaining env variables to enable the
