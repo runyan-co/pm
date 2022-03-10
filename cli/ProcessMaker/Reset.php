@@ -9,17 +9,21 @@ use Illuminate\Support\Str;
 
 class Reset
 {
-    protected $branch, $cli, $files;
+    protected CommandLine $cli;
 
-    protected static $gitCommands = [
+    protected FileSystem $files;
+
+    protected string $branch = '';
+
+    protected static array $gitCommands = [
         'git checkout {branch}',
     ];
 
-    protected static $composerCommands = [
-        'composer install --optimize-autoloader --no-interaction --no-progress'
+    protected static array $composerCommands = [
+        COMPOSER_BINARY.' install --optimize-autoloader --no-interaction --no-progress'
     ];
 
-    protected static $npmCommands = [
+    protected static array $npmCommands = [
         'npm install --non-interactive --quiet',
         'npm run dev --non-interactive --quiet',
     ];

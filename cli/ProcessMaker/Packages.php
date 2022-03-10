@@ -316,22 +316,19 @@ class Packages
      */
     public function buildPullCommands(string $branch, array $commands = []): array
     {
-        foreach ($this->getPackages() as $package) {
-            $name = $package['name'];
-            $path = $package['path'];
-
+        foreach ((object) $this->getPackages() as $package) {
             $package_commands = [
-                "if [[ -d ./.idea ]]; then mkdir ../$name && mv .idea ../$name; fi",
+                "if [[ -d ./.idea ]]; then mkdir ../{$package->name} && mv .idea ../{$package->name}; fi",
                 'git reset --hard',
                 'git clean -d -f .',
                 'git fetch --all',
                 "git checkout $branch",
                 'git pull --force',
-                "if [[ -d ../$name/.idea ]]; mv ../$name/.idea . && rm -r ../$name; fi"
+                "if [[ -d ../{$package->name}/.idea ]]; mv ../{$package->name}/.idea . && rm -r ../{$package->name}; fi"
             ];
 
-            $commands[$name] = array_map(static function ($command) use ($path) {
-                return "cd $path && $command";
+            $commands[$package->name] = array_map(static function ($command) use ($package) {
+                return "cd {$package->path} && $command";
             }, $package_commands);
         }
 

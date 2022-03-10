@@ -24,6 +24,8 @@ use ProcessMaker\Facades\ContinuousIntegration;
 use ProcessMaker\Facades\FileSystem;
 use ProcessMaker\Facades\Supervisor;
 use ProcessMaker\Facades\Git;
+use ProcessMaker\Facades\IDE;
+
 use function ProcessMaker\Cli\info;
 use function ProcessMaker\Cli\table;
 use function ProcessMaker\Cli\output;
@@ -171,6 +173,12 @@ if (!FileSystem::isDir(PM_HOME_PATH)) {
             'process' => 'The name of the supervisor process to start or restart'
         ]);
 
+		$app->command('check', function (InputInterface $input, OutputInterface $output) {
+            $moved_to = IDE::temporarilyMoveConfiguration();
+
+			dump($moved_to);
+		});
+
     /*
 	* -------------------------------------------------+
 	* |                                                |
@@ -178,7 +186,8 @@ if (!FileSystem::isDir(PM_HOME_PATH)) {
 	* |                                                |
 	* -------------------------------------------------+
 	*/
-	$app->command('core:reset [branch] [-d|--bounce-database] [--no-npm] [-y|--yes]', function (InputInterface $input, OutputInterface $output) {
+	$app->command('core:reset [branch] [-d|--bounce-database] [--no-npm] [-y|--yes]',
+		function (InputInterface $input, OutputInterface $output) {
 
 		$branch = $input->getArgument('branch') ?? 'develop';
 		$verbose = $input->getOption('verbose') ?? false;
@@ -216,7 +225,7 @@ if (!FileSystem::isDir(PM_HOME_PATH)) {
         $steps += 2;
 
         // Save any IDE config files
-        if ($ide_config = FileSystem::exists($ide_config_path = Config::codebasePath('/.idea'))) {
+        if ($ide_config = IDE::hasConfiguration()) {
             $steps += 2;
         }
 
@@ -247,7 +256,7 @@ if (!FileSystem::isDir(PM_HOME_PATH)) {
             $cli->getProgress()->setMessage('Copying IDE settings...');
             $cli->getProgress()->advance();
 
-			FileSystem::mv($ide_config_path, $ide_config_path = pm_path('.idea'));
+            $ide_config = IDE::temporarilyMoveConfiguration();
 		}
 
 		// Remove old codebase
@@ -263,12 +272,11 @@ if (!FileSystem::isDir(PM_HOME_PATH)) {
 		Git::clone('processmaker', Str::replaceLast('processmaker', '', Config::codebasePath()));
 
         // Re-add the IDE settings (if they existed to begin with)
-        if ($ide_config && isset($ide_config_path)) {
+        if ($ide_config) {
             $cli->getProgress()->setMessage('Re-adding IDE settings...');
             $cli->getProgress()->advance();
 
-            FileSystem::mv($ide_config_path, Config::codebasePath());
-			FileSystem::unlink($ide_config_path);
+            IDE::moveConfigurationBack($ide_config);
         }
 
 		// Iterate through them and execute
