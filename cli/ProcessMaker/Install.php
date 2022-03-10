@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace ProcessMaker\Cli;
 
 use ProcessMaker\Facades\CommandLine as Cli;
@@ -10,11 +12,17 @@ class Install
 
     public string $bin = HOMEBREW_PREFIX.'/bin/pm';
 
+    /**
+     * @param  \ProcessMaker\Cli\FileSystem  $files
+     */
     public function __construct(FileSystem $files)
     {
         $this->files = $files;
     }
 
+    /**
+     * @return void
+     */
     public function symlinkToUsersBin(): void
     {
         $this->unlinkFromUsersBin();
@@ -24,8 +32,6 @@ class Install
 
     /**
      * Remove the symlink from the user's local bin.
-     *
-     * @return void
      */
     public function unlinkFromUsersBin(): void
     {
@@ -34,11 +40,6 @@ class Install
 
     /**
      * Install the Valet configuration file.
-     *
-     * @param  string  $codebase_path
-     * @param  string  $packages_path
-     *
-     * @return void
      */
     public function install(string $codebase_path, string $packages_path): void
     {
@@ -50,7 +51,7 @@ class Install
 
         $this->write([
             'codebase_path' => $codebase_path,
-            'packages_path' => $packages_path
+            'packages_path' => $packages_path,
         ]);
 
         $this->files->chown($this->path(), user());
@@ -58,8 +59,6 @@ class Install
 
     /**
      * Forcefully delete the Valet home configuration directory and contents.
-     *
-     * @return void
      */
     public function uninstall(): void
     {
@@ -68,8 +67,6 @@ class Install
 
     /**
      * Create the Valet configuration directory.
-     *
-     * @return void
      */
     public function createConfigurationDirectory(): void
     {
@@ -89,14 +86,13 @@ class Install
     /**
      * Update a specific key in the configuration file.
      *
-     * @param  string  $key
      * @param  mixed  $value
      *
      * @return array
      */
     public function updateKey(string $key, $value): array
     {
-        return tap($this->read(), function (&$config) use ($key, $value) {
+        return tap($this->read(), function (&$config) use ($key, $value): void {
             $config[$key] = $value;
             $this->write($config);
         });
@@ -106,20 +102,20 @@ class Install
      * Write the given configuration to disk.
      *
      * @param  array  $config
-     *
-     * @return void
      */
     public function write(array $config): void
     {
-        $this->files->putAsUser($this->path(), json_encode(
-            $config, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES).PHP_EOL
+        $this->files->putAsUser(
+            $this->path(),
+            json_encode(
+            $config,
+            JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES
+        ).PHP_EOL
         );
     }
 
     /**
      * Get the configuration file path.
-     *
-     * @return string
      */
     public function path(): string
     {

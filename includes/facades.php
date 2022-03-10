@@ -1,21 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace ProcessMaker\Facades;
 
 use Illuminate\Container\Container;
 
 abstract class Facade
 {
-    /**
-     * The key for the binding in the container.
-     *
-     * @return string
-     */
-    public static function containerKey(): string
-    {
-        return 'ProcessMaker\\Cli\\'.basename(str_replace('\\', '/', static::class));
-    }
-
     /**
      * Call a non-static method on the facade.
      *
@@ -31,7 +23,16 @@ abstract class Facade
 
         return call_user_func_array([$resolvedInstance, $method], $parameters);
     }
+
+    /**
+     * The key for the binding in the container.
+     */
+    public static function containerKey(): string
+    {
+        return 'ProcessMaker\\Cli\\'.basename(str_replace('\\', '/', static::class));
+    }
 }
+
 
 /**
  * @see \ProcessMaker\Cli\CommandLine

@@ -1,17 +1,18 @@
 <?php
 
+declare(strict_types=1);
+
 namespace ProcessMaker\Cli;
 
-use ProcessMaker\Facades\Git;
 use ProcessMaker\Facades\Config;
+use ProcessMaker\Facades\Git;
 
 class ContinuousIntegration
 {
     /**
-     * @return void
      * @throws \Illuminate\Contracts\Container\BindingResolutionException
      */
-    public function install()
+    public function install(): void
     {
         $packages = resolve(Packages::class);
         $list = $packages->getSupportedPackages();
@@ -30,13 +31,11 @@ class ContinuousIntegration
 
     /**
      * @param  array  $list
-     *
-     * @return string
      */
-    private function composerRequireList(array $list)
+    private function composerRequireList(array $list): string
     {
-        return collect($list)->map(function($package) {
-            return "processmaker/$package";
-        })->join(" ");
+        return collect($list)->map(function ($package) {
+            return "processmaker/${package}";
+        })->join(' ');
     }
 }

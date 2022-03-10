@@ -1,16 +1,18 @@
 <?php
 
+declare(strict_types=1);
+
 namespace ProcessMaker\Cli;
 
-use Exception;
-use LogicException;
 use DomainException;
-use RuntimeException;
-use Illuminate\Support\Str;
+use Exception;
 use Illuminate\Support\Collection;
-use ProcessMaker\Facades\Git;
+use Illuminate\Support\Str;
+use LogicException;
 use ProcessMaker\Facades\Composer;
 use ProcessMaker\Facades\Config;
+use ProcessMaker\Facades\Git;
+use RuntimeException;
 
 class Packages
 {
@@ -22,9 +24,9 @@ class Packages
      * Packages that are required by processmaker/processmaker,
      * but aren't included in the list of enterprise packages.
      *
-     * @var string[]
+     * @var array<string>
      */
-    protected static $additionalPackages = [
+    protected static array $additionalPackages = [
         'pmql',
         'nayra',
         'docker-executor-lua',
@@ -32,6 +34,10 @@ class Packages
         'docker-executor-node',
     ];
 
+    /**
+     * @param  \ProcessMaker\Cli\CommandLine  $cli
+     * @param  \ProcessMaker\Cli\FileSystem  $files
+     */
     public function __construct(CommandLine $cli, FileSystem $files)
     {
         $this->cli = $cli;
@@ -39,8 +45,6 @@ class Packages
     }
 
     /**
-     * @param  string  $name
-     *
      * @return mixed
      */
     public function getPackage(string $name): array
@@ -50,7 +54,7 @@ class Packages
         }
 
         if (! array_key_exists($name, $this->getPackages())) {
-            throw new LogicException("Package with name \"$name\" does not exist locally.");
+            throw new LogicException("Package with name \"${name}\" does not exist locally.");
         }
 
         return $this->getPackages()[$name];
@@ -72,7 +76,7 @@ class Packages
      *
      * @return array
      */
-    public function getSupportedPackages(bool $enterpriseOnly = false, string $branch = null): array
+    public function getSupportedPackages(bool $enterpriseOnly = false, ?string $branch = null): array
     {
         if (! $this->packageExists('packages')) {
             $this->clonePackage('packages');
@@ -122,11 +126,11 @@ class Packages
         // first, assuming the returned order is relied on
         // for installation
         return $supported_packages->prepend('package-collections')
-                                  ->prepend('package-savedsearch')
-                                  ->prepend('connector-send-email')
-                                  ->prepend('docker-executor-node-ssr')
-                                  ->prepend('packages')
-                                  ->toArray();
+            ->prepend('package-savedsearch')
+            ->prepend('connector-send-email')
+            ->prepend('docker-executor-node-ssr')
+            ->prepend('packages')
+            ->toArray();
     }
 
     /**
@@ -140,17 +144,17 @@ class Packages
         $name = Str::replace('processmaker/', '', $name);
 
         if (! $force && $this->packageExists($name)) {
-            throw new LogicException("Package already exists: processmaker/$name");
+            throw new LogicException("Package already exists: processmaker/${name}");
         }
 
         if ($force) {
-            $this->files->rmdir(Config::packagesPath()."/$name");
+            $this->files->rmdir(Config::packagesPath()."/${name}");
         }
 
-        $command = "git clone https://github.com/processmaker/$name";
+        $command = "git clone https://github.com/processmaker/${name}";
 
-        $output = $this->cli->run($command, function ($code, $out) use ($name) {
-            throw new RuntimeException("Failed to clone $name: ".PHP_EOL.$out);
+        $output = $this->cli->run($command, function ($code, $out) use ($name): void {
+            throw new RuntimeException("Failed to clone ${name}: ".PHP_EOL.$out);
         }, Config::packagesPath());
 
         return $this->packageExists($name);
@@ -199,11 +203,9 @@ class Packages
     /**
      * Get the names of the local composer packages
      *
-     * @param  string|null  $package_directory
-     *
      * @return array
      */
-    public function getPackagesListFromDirectory(string $package_directory = null): array
+    public function getPackagesListFromDirectory(?string $package_directory = null): array
     {
         if (! is_string($package_directory)) {
             $package_directory = Config::packagesPath();
@@ -229,7 +231,7 @@ class Packages
         $packages = array_map(function ($package_name) {
             return [
                 'name' => $package_name,
-                'path' => Config::packagesPath()."/$package_name",
+                'path' => Config::packagesPath()."/${package_name}",
             ];
         }, $this->getPackagesListFromDirectory());
 
@@ -238,14 +240,11 @@ class Packages
 
     /**
      * Get the package version number for a package
-     *
-     * @param  string  $package_directory
-     *
-     * @return string
      */
     public function getPackageVersion(string $package_directory): string
     {
-        $composer_json = Composer::getComposerJson($package_directory) ?? new class {};
+        $composer_json = Composer::getComposerJson($package_directory) ?? new class() {
+        };
 
         if (! property_exists($composer_json, 'version')) {
             return '...';
@@ -268,7 +267,7 @@ class Packages
         $branch = $this->cli->run('git rev-parse --abbrev-ref HEAD', null, $path);
 
         // Remove unnecessary end of line character(s)
-        return Str::replace(["\n", PHP_EOL], "", $branch);
+        return Str::replace(["\n", PHP_EOL], '', $branch);
     }
 
     /**
@@ -298,10 +297,10 @@ class Packages
                 : 'commit_hash';
 
             $metadata[$package['name']] = [
-                'name' /*********/ => $package['name'],
-                $version_key /***/ => $this->getPackageVersion($path),
-                $branch_key /****/ => $this->getCurrentGitBranchName($path),
-                $hash_key /******/ => Git::getCurrentCommitHash($path),
+                'name'   => $package['name'],
+                $version_key   => $this->getPackageVersion($path),
+                $branch_key   => $this->getCurrentGitBranchName($path),
+                $hash_key   => Git::getCurrentCommitHash($path),
             ];
         }
 
@@ -316,19 +315,21 @@ class Packages
      */
     public function buildPullCommands(string $branch, array $commands = []): array
     {
-        foreach ((object) $this->getPackages() as $package) {
+        foreach ($this->getPackages() as $package) {
+            $package = (object) $package;
+
             $package_commands = [
                 "if [[ -d ./.idea ]]; then mkdir ../{$package->name} && mv .idea ../{$package->name}; fi",
                 'git reset --hard',
                 'git clean -d -f .',
                 'git fetch --all',
-                "git checkout $branch",
+                "git checkout {$branch}",
                 'git pull --force',
-                "if [[ -d ../{$package->name}/.idea ]]; mv ../{$package->name}/.idea . && rm -r ../{$package->name}; fi"
+                "if [[ -d ../{$package->name}/.idea ]]; mv ../{$package->name}/.idea . && rm -r ../{$package->name}; fi",
             ];
 
             $commands[$package->name] = array_map(static function ($command) use ($package) {
-                return "cd {$package->path} && $command";
+                return "cd {$package->path} && ${command}";
             }, $package_commands);
         }
 
@@ -336,12 +337,9 @@ class Packages
     }
 
     /**
-     * @param  bool  $verbose
-     * @param  string|null  $branch
-     *
      * @throws \Illuminate\Contracts\Container\BindingResolutionException
      */
-    public function pull(bool $verbose = false, string $branch = null): void
+    public function pull(bool $verbose = false, ?string $branch = null): void
     {
         // A quick command (thanks Nolan!) to grab the default branch
         $get_default_git_branch = "$(git symbolic-ref refs/remotes/origin/HEAD | sed 's@^refs/remotes/origin/@@')";
@@ -360,7 +358,7 @@ class Packages
         $processManager->setVerbosity($verbose);
 
         // Set a closure to be called when the final process exits
-        $processManager->setFinalCallback(function () use ($metadata) {
+        $processManager->setFinalCallback(function () use ($metadata): void {
             $this->outputPullResults($metadata);
         });
 
@@ -373,73 +371,73 @@ class Packages
      */
     public function getPackagesTableData(): array
     {
-        $table = [];
+        $table = (object) [];
 
         // Build the table rows by merging the compare-with
         // package metadata with a recent snapshot
         foreach ($this->takePackagesSnapshot() as $package => $updated) {
-            $table[$package] = $updated;
+            $table->$package = $updated;
         }
 
         // Sort the columns in a more sensible way
         foreach ($table as $key => $row) {
-            $table[$key] = [
-                'name' => '<fg=cyan>'.$row['name'].'</>',
-                'version' => $row['version'],
-                'branch' => $row['branch'],
-                'commit_hash' => $row['commit_hash'],
+            $table->$key = [
+                'name' => "<fg=cyan>{$row->name}</>",
+                'version' => $row->version,
+                'branch' => $row->branch,
+                'commit_hash' => $row->commit_hash,
             ];
         }
 
-        return $table;
+        return (array) $table;
     }
 
     /**
      * @param  array  $pre_pull_package_metadata
      */
-    public function outputPullResults(array $pre_pull_package_metadata)
+    public function outputPullResults(array $pre_pull_package_metadata): void
     {
-        $table = [];
+        $table = (object) [];
 
         // Build the table rows
         foreach ($this->takePackagesSnapshot(true) as $package => $updated) {
-            $table[$package] = array_merge($pre_pull_package_metadata[$package], $updated);
+            $table->$package = array_merge($pre_pull_package_metadata[$package], $updated);
         }
 
         // Sort the columns in a more sensible way
         foreach ($table as $key => $row) {
-            $table[$key] = [
-                'name' => $row['name'],
-                'version' => $row['version'],
-                'updated_version' => $row['updated_version'],
-                'branch' => $row['branch'],
-                'updated_branch' => $row['updated_branch'],
-                'commit_hash' => $row['commit_hash'],
-                'updated_commit_hash' => $row['updated_commit_hash'],
+            $table->$key = [
+                'name' => $row->name,
+                'version' => $row->version,
+                'updated_version' => $row->updated_version,
+                'branch' => $row->branch,
+                'updated_branch' => $row->updated_branch,
+                'commit_hash' => $row->commit_hash,
+                'updated_commit_hash' => $row->updated_commit_hash,
             ];
         }
 
         // Add console styling
         foreach ($table as $key => $row) {
             // Highlight the package name
-            $table[$key]['name'] = '<fg=cyan>'.$row['name'].'</>';
+            $table->$key['name'] = "<fg=cyan>{$row->name}</>";
 
             // If the versions are the same, no updated occurred.
             // If they are different, let's make it easier to see.
-            if ($row['version'] !== $row['updated_version']) {
-                $table[$key]['updated_version'] = '<info>'.$row['updated_version'].'</info>';
+            if ($row->version !== $row->updated_version) {
+                $table->$key['updated_version'] = "<info>{$row->updated_version}</info>";
             }
 
             // Do the same thing with branches, since we may
             // have switch to 4.1 or 4.2 during the pull, which
             // is set by the user by adding a flag to the command
-            if ($row['branch'] !== $row['updated_branch']) {
-                $table[$key]['updated_branch'] = '<info>'.$row['updated_branch'].'</info>';
+            if ($row->branch !== $row->updated_branch) {
+                $table->$key['updated_branch'] = "<info>{$row->updated_branch}</info>";
             }
 
             // One more time to see if the commit hash has changed
-            if ($row['commit_hash'] !== $row['updated_commit_hash']) {
-                $table[$key]['updated_commit_hash'] = '<info>'.$row['updated_commit_hash'].'</info>';
+            if ($row->commit_hash !== $row->updated_commit_hash) {
+                $table->$key['updated_commit_hash'] = "<info>{$row->updated_commit_hash}</info>";
             }
         }
 
@@ -447,17 +445,12 @@ class Packages
         output(PHP_EOL);
 
         // Format our results in an easy-to-ready table
-        table(['Name', 'Version ->', '-> Version', 'Branch ->', '-> Branch', 'Hash ->', '-> Hash'], $table);
+        table(['Name', 'Version ->', '-> Version', 'Branch ->', '-> Branch', 'Hash ->', '-> Hash'], (array) $table);
     }
 
     /**
      * Build the stack of commands to composer require and
      * install each enterprise ProcessMaker 4 package
-     *
-     * @param  bool  $for_41_develop
-     * @param  bool  $force
-     *
-     * @return \Illuminate\Support\Collection
      */
     public function buildPackageInstallCommands(bool $for_41_develop = false, bool $force = false): Collection
     {
@@ -467,27 +460,25 @@ class Packages
 
         // Find out which branch to switch to in the local
         // processmaker/processmaker codebase
-        $branch = $for_41_develop
-            ? '4.1-develop'
-            : 'develop';
+        $branch = $for_41_develop ? '4.1-develop' : 'develop';
 
         // Find out which branch we're on
         $current_branch = Git::getCurrentBranchName(Config::codebasePath());
 
         // Make sure we're on the right branch
         if ($current_branch !== $branch && ! $force) {
-            throw new DomainException("Core codebase branch should be \"$branch\" but \"$current_branch\" was found.");
+            throw new DomainException("Core codebase branch should be \"{$branch}\" but \"{$current_branch}\" was found.");
         }
 
         // Grab the list of supported enterprise packages
         $enterprise_packages = new Collection($this->getSupportedPackages(true, $branch));
 
         // Build the stack of commands to run
-        return $enterprise_packages->keyBy(fn($package) => $package)->transform(function (string $package) {
+        return $enterprise_packages->keyBy(fn ($package) => $package)->transform(function (string $package) {
             return new Collection([
-                COMPOSER_BINARY." require processmaker/$package --no-interaction",
-                PHP_BINARY." artisan $package:install --no-interaction",
-                PHP_BINARY." artisan vendor:publish --tag=$package --no-interaction",
+                COMPOSER_BINARY." require processmaker/{$package} --no-interaction",
+                PHP_BINARY." artisan ${package}:install --no-interaction",
+                PHP_BINARY." artisan vendor:publish --tag={$package} --no-interaction",
             ]);
         })->put('horizon', new Collection([PHP_BINARY.' artisan horizon:terminate']));
     }

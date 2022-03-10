@@ -1,15 +1,25 @@
 <?php
 
+declare(strict_types=1);
+
 namespace ProcessMaker\Cli;
 
 use Illuminate\Support\Str;
-use Symfony\Component\Process\Process;
 use Symfony\Component\Console\Helper\ProgressBar;
 use Symfony\Component\Console\Output\ConsoleOutput;
+use Symfony\Component\Process\Process;
 
 class CommandLine
 {
-    private $progress, $time;
+    /**
+     * @var ProgressBar
+     */
+    private $progress;
+
+    /**
+     * @var float
+     */
+    private float $time;
 
     public function __construct()
     {
@@ -18,21 +28,15 @@ class CommandLine
 
     /**
      * Returns absolute path of an executable by name
-     *
-     * @param  string  $executable_name
-     *
-     * @return string
      */
     public function findExecutable(string $executable_name): string
     {
-        return Str::replace([PHP_EOL, "\n"], '', $this->run("which $executable_name"));
+        return Str::replace([PHP_EOL, "\n"], '', $this->run("which {$executable_name}"));
     }
 
     /**
      * Returns the timing (in seconds) since the
      * CommandLine class was instantiated
-     *
-     * @return string
      */
     public function timing(): string
     {
@@ -45,7 +49,7 @@ class CommandLine
             $minutes = round($minutes * 60);
             $hours = round($hours);
 
-            return "$hours h and $minutes m";
+            return "${hours}h and ${minutes}m";
         }
 
         if ($minutes >= 1.00) {
@@ -53,41 +57,30 @@ class CommandLine
             $seconds = round($seconds * 60);
             $minutes = round($minutes);
 
-            return "$minutes m and $seconds s";
+            return "${minutes}m and ${seconds}s";
         }
 
-        return "$seconds s";
+        return "${seconds}s";
     }
 
     /**
      * Simple global function to run commands.
-     *
-     * @param  string  $command
-     *
-     * @return void
      */
-    public function quietly(string $command)
+    public function quietly(string $command): void
     {
         $this->runCommand($command.' > /dev/null 2>&1');
     }
 
     /**
      * Pass the command to the command line and display the output.
-     *
-     * @param  string  $command
-     *
-     * @return void
      */
-    public function passthru(string $command)
+    public function passthru(string $command): void
     {
         passthru($command);
     }
 
     /**
      * Create a ProgressBar bound to this class instance
-     *
-     * @param  int  $count
-     * @param  string  $type
      */
     public function createProgressBar(int $count, string $type = 'minimal'): void
     {
@@ -107,7 +100,7 @@ class CommandLine
      *
      * @return \Symfony\Component\Console\Helper\ProgressBar
      */
-    public function getProgress(int $count = null): ProgressBar
+    public function getProgress(?int $count = null): ProgressBar
     {
         if (! $this->progress instanceof ProgressBar) {
             $this->createProgressBar($count);
@@ -118,30 +111,18 @@ class CommandLine
 
     /**
      * Run the given command as the non-root user.
-     *
-     * @param  string  $command
-     * @param  callable|null  $onError
-     * @param  string|null  $workingDir
-     *
-     * @return string
      */
-    public function run(string $command, callable $onError = null, string $workingDir = null): string
+    public function run(string $command, ?callable $onError = null, ?string $workingDir = null): string
     {
         return $this->runCommand($command, $onError, $workingDir);
     }
 
     /**
      * Run the given command.
-     *
-     * @param  string  $command
-     * @param  callable|null  $onError
-     * @param  string|null  $workingDir
-     *
-     * @return string
      */
-    public function runCommand(string $command, callable $onError = null, string $workingDir = null): string
+    public function runCommand(string $command, ?callable $onError = null, ?string $workingDir = null): string
     {
-        $onError = $onError ? : static function () {};
+        $onError = $onError ?: static function (): void {};
 
         if (method_exists(Process::class, 'fromShellCommandline')) {
             $process = Process::fromShellCommandline($command);
@@ -156,9 +137,11 @@ class CommandLine
         }
 
         $processOutput = '';
-        $process->setTimeout(null)->run(function ($type, $line) use (&$processOutput) {
-            $processOutput .= $line;
-        });
+
+        $process->setTimeout(null)->run(
+            function ($type, $line) use (&$processOutput): void {
+                $processOutput .= $line;
+            });
 
         if ($process->getExitCode() > 0) {
             $onError($process->getExitCode(), $processOutput);
@@ -166,5 +149,4 @@ class CommandLine
 
         return $processOutput;
     }
-
 }

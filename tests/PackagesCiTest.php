@@ -7,6 +7,9 @@ use function ProcessMaker\Cli\swap;
 
 class PackagesCiTest extends TestCase
 {
+    /**
+     * @return void
+     */
     public function setUp() : void
     {
         $this->codebasePath = __DIR__ . '/Fixtures/codebase';
@@ -17,6 +20,9 @@ class PackagesCiTest extends TestCase
         putenv("GITHUB_TOKEN=$this->token");
     }
 
+    /**
+     * @return void
+     */
     public function testCiInstall()
     {
         $cli = Mockery::mock(CommandLine::class);
