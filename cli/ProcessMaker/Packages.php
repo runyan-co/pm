@@ -376,7 +376,7 @@ class Packages
         // Build the table rows by merging the compare-with
         // package metadata with a recent snapshot
         foreach ($this->takePackagesSnapshot() as $package => $updated) {
-            $table->$package = $updated;
+            $table->$package = (object) $updated;
         }
 
         // Sort the columns in a more sensible way
