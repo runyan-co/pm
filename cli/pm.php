@@ -170,6 +170,64 @@ if (! FileSystem::isDir(PM_HOME_PATH)) {
     })->descriptions('Attempt to start/restart the supervisor process by name if available, otherwise it restarts all processes', [
             'process' => 'The name of the supervisor process to start or restart',
         ]);
+
+    /*
+	* -------------------------------------------------+
+	* |                                                |
+	* |    Command: Core:Both                          |
+	* |                                                |
+	* -------------------------------------------------+
+	*/
+    $app->command('core:both [branch] [-4|--for_41_develop] [-d|--bounce-database] [--no-npm] [-y|--yes]',
+        function (InputInterface $input, OutputInterface $output) use ($app): void {
+
+		// This command (core:both) basically just let's us run both the
+		// core:reset command followed by the core:install-packages
+		// command to make it easier
+		$command = static function ($command) use ($input) {
+			// core:reset command options/arguments
+			if (Str::contains($command, 'core:reset')) {
+                if ($branch = $input->getArgument('branch') ?? 'develop') {
+                    $command .= " {$branch}";
+                }
+
+                if ($input->getOption('no-npm')) {
+                    $command .= ' --no-npm';
+                }
+
+                if ($input->getOption('bounce-database')) {
+                    $command .= ' -d';
+                }
+
+                if ($input->getOption('yes')) {
+                    $command .= ' -y';
+                }
+			}
+
+			// core:install-packages command options/arguments
+			if (Str::contains($command, 'core:install-packages')) {
+				if ($input->getArgument('branch') === '4.1-develop' || $input->getOption('for_41_develop')) {
+					$command .= ' -4';
+				}
+			}
+
+            if ($input->getOption('verbose')) {
+                $command .= ' -v';
+            }
+
+			return $command;
+		};
+
+		info('Re-installing processmaker/processmaker locally...');
+
+		if ($app->runCommand($command('core:reset'), $output) === 0) {
+
+			info(PHP_EOL.'Installing enterprise packages...');
+
+            $app->runCommand($command('core:install-packages'), $output);
+		}
+	})->descriptions('Runs both the core:reset and core:install-packages commands');
+
     /*
     * -------------------------------------------------+
     * |                                                |
@@ -346,8 +404,7 @@ if (! FileSystem::isDir(PM_HOME_PATH)) {
      * |                                                |
      * -------------------------------------------------+
      */
-    $app->command(
-        'core:install-packages [-4|--for_41_develop]',
+    $app->command('core:install-packages [-4|--for_41_develop]',
         function (InputInterface $input, OutputInterface $output): void {
 
         // Indicates if we should install the 4.1-develop
