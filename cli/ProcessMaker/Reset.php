@@ -6,6 +6,7 @@ namespace ProcessMaker\Cli;
 
 use DomainException;
 use Illuminate\Support\Str;
+use ProcessMaker\Facades\Install;
 use ProcessMaker\Facades\CommandLine as Cli;
 use ProcessMaker\Facades\Config;
 
@@ -71,10 +72,12 @@ class Reset
         $dockerExecutable = Cli::findExecutable('docker');
 
         // todo Need to update the core repo to set the docker executable location as an arg for the artisan install command
-        $formatEnvExampleCommand = [];
+        $formatEnvCommand = [];
 
+        // This is a hot fix so you can properly set the config
+        // to point to the correct docker executable
         if ($this->branch === '4.1-develop') {
-            $formatEnvExampleCommand = [
+            $formatEnvCommand = [
                 '4.1 cleanup' => [
                     "sed -i -- 's+/usr/bin/docker+${dockerExecutable}+g' config/app.php",
                     'if [ -f config/app.php-- ]; then rm config/app.php--; fi',
@@ -91,7 +94,7 @@ class Reset
         return array_filter(array_merge(
             $databaseCommands,
             $gitCommands,
-            $formatEnvExampleCommand,
+            $formatEnvCommand,
             $composerCommands,
             $artisanInstallCommands,
             $npmCommands
@@ -108,25 +111,29 @@ class Reset
             ? 'phpredis'
             : 'predis';
 
+        $config_value_callback = static function (string $key) {
+            return ! blank(($value = Install::read($key))) ? $value : null;
+        };
+
         $install_command = [
             PHP_BINARY.' artisan processmaker:install',
             '--no-interaction',
             '--app-debug',
             '--telescope',
-            '--db-password=',
-            '--db-username=root',
-            '--db-host=127.0.0.1',
-            '--db-port=3306',
+            '--db-password='.$config_value_callback('database_password'),
+            '--db-username='.$config_value_callback('database_user'),
+            '--db-host='.$config_value_callback('database_host'),
+            '--db-port='.$config_value_callback('database_port'),
             '--data-driver=mysql',
-            '--db-name=processmaker',
-            '--url=http://processmaker.test',
-            '--password=12345678',
-            '--email=noreply@processmaker.test',
-            '--username=admin',
-            '--first-name=Change',
-            '--last-name=Maker',
+            '--db-name='.$config_value_callback('database_name'),
+            '--url='.$config_value_callback('url'),
+            '--password='.$config_value_callback('admin_password'),
+            '--email='.$config_value_callback('admin_email'),
+            '--username='.$config_value_callback('admin_username'),
+            '--first-name='.$config_value_callback('admin_first_name'),
+            '--last-name='.$config_value_callback('admin_last_name'),
             "--redis-client={$redis_driver}",
-            '--redis-host=127.0.0.1',
+            '--redis-host='.$config_value_callback('redis_host'),
         ];
 
         if ($this->branch !== '4.1-develop') {
@@ -171,10 +178,13 @@ EOFMYSQL";
         }
 
         $find_and_remove = [
-            'SESSION_DOMAIN=http://processmaker.test',
-            'DOCKER_HOST_URL=http://processmaker.test',
+            'SESSION_DOMAIN='.Install::read('url'),
+            'DOCKER_HOST_URL='.Install::read('url'),
             'APP_ENV=production',
         ];
+
+        // Reformat the url to a domain syntax e.g. http://processmaker.test/ -> processmaker.test
+        $domain = Str::remove(['http://', 'https://'], Install::read('url'));
 
         $append = [
             'APP_ENV=local',
@@ -185,7 +195,7 @@ EOFMYSQL";
             'PROCESSMAKER_SCRIPTS_DOCKER='.Cli::findExecutable('docker'),
             'SESSION_DRIVER=redis',
             'SESSION_SECURE_COOKIE=false',
-            'SESSION_DOMAIN=processmaker.test',
+            'SESSION_DOMAIN='.$domain,
             'LARAVEL_ECHO_SERVER_PROTO=http',
             'LARAVEL_ECHO_SERVER_SSL_KEY=""',
             'LARAVEL_ECHO_SERVER_SSL_CERT=""',
