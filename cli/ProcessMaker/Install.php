@@ -41,7 +41,7 @@ class Install
     /**
      * Install the Valet configuration file.
      */
-    public function install(string $codebase_path, string $packages_path): void
+    public function install(array $config_values): void
     {
         $this->unlinkFromUsersBin();
 
@@ -49,10 +49,7 @@ class Install
 
         $this->createConfigurationDirectory();
 
-        $this->write([
-            'codebase_path' => $codebase_path,
-            'packages_path' => $packages_path,
-        ]);
+        $this->write($config_values);
 
         $this->files->chown($this->path(), user());
     }
@@ -76,19 +73,32 @@ class Install
     /**
      * Read the configuration file as JSON.
      *
-     * @return array
+     * @param  string|null  $key
+     *
+     * @return array|string
+     * @throws \JsonException
      */
-    public function read(): array
+    public function read(string $key = null)
     {
-        return json_decode($this->files->get($this->path()), true);
+        $json = json_decode(
+            $this->files->get($this->path()), true, 512, JSON_THROW_ON_ERROR
+        );
+
+        if ($key && is_array($json) && array_key_exists($key, $json)) {
+            return $json[$key];
+        }
+
+        return $json;
     }
 
     /**
      * Update a specific key in the configuration file.
      *
+     * @param  string  $key
      * @param  mixed  $value
      *
      * @return array
+     * @throws \JsonException
      */
     public function updateKey(string $key, $value): array
     {
@@ -107,10 +117,7 @@ class Install
     {
         $this->files->putAsUser(
             $this->path(),
-            json_encode(
-            $config,
-            JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES
-        ).PHP_EOL
+            json_encode($config, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES).PHP_EOL
         );
     }
 

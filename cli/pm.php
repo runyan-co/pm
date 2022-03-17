@@ -37,7 +37,7 @@ use function ProcessMaker\Cli\warningThenExit;
 
 Container::setInstance(new Container());
 
-$app = new Application('ProcessMaker CLI Tool', '0.5.0');
+$app = new Application('ProcessMaker CLI Tool', '1.0.0');
 
 /*
  * -------------------------------------------------+
@@ -60,13 +60,16 @@ if (! FileSystem::isDir(PM_HOME_PATH)) {
      */
     $app->command('install', function (InputInterface $input, OutputInterface $output): void {
 
+		// A little explanation
+	    output('You\'ll only need to run this install process one time. All of the values will be saved to ~/.config/pm/config.json.'.PHP_EOL);
+
         // First thing we want to do is ask the user to
         // tell us the absolute path to the core codebase
         $helper = $this->getHelperSet()->get('question');
 
         // Callback to autocomplete the directories available
         // as the user is typing
-        $callback = function (string $userInput): array {
+        $filesystem_callback = function (string $userInput): array {
             $inputPath = preg_replace('%(/|^)[^/]*$%', '$1', $userInput);
             $inputPath = $inputPath === '' ? '.' : $inputPath;
             $foundFilesAndDirs = @scandir($inputPath) ?: [];
@@ -76,39 +79,93 @@ if (! FileSystem::isDir(PM_HOME_PATH)) {
             }, $foundFilesAndDirs);
         };
 
-        $question = '<info>Please enter the absolute path to the local copy of the processmaker/processmaker codebase</info>:'.PHP_EOL;
-        $question = new Question($question);
-        $question->setAutocompleterCallback($callback);
-        $codebase_path = $helper->ask($input, $output, $question);
+		// Represents current step the config setup is on
+		$current = 0;
 
-        // Make sure they entered something
-        if ($codebase_path === null) {
-            warningThenExit('You must enter a valid absolute path to continue the installation. Please try again.');
-        }
+		// Iterate through the defaults to build the config.json contents
+		foreach ($configuration = \ProcessMaker\Cli\Config::$defaults as $config_key => $config) {
 
-        // Check for composer.json
-        if (! FileSystem::exists("${codebase_path}/composer.json")) {
-            warningThenExit("Could not the composer.json for processmaker/processmaker in: ${codebase_path}");
-        }
+			// Keep track of where were at for the user's sake
+            $current += 1;
+            $count = count($configuration);
 
-        // Next we need to know where all of the local copies
-        // of the processmaker/* packages will be stored
-        $question = '<info>Please enter the absolute path to the directory where local copies of the ProcessMaker packages will be stored:</info>:'.PHP_EOL;
-        $question = new Question($question);
-        $question->setAutocompleterCallback($callback);
-        $packages_path = $helper->ask($input, $output, $question);
+			// Setup the basic info we'll need
+			$config = (object) $config;
+			$description = strtolower($config->description);
+			$default = !blank($config->default) ? $config->default : null;
+			$question = "<comment>Step ${current} of ${count}</comment>".PHP_EOL."<info>Please enter the {$description}:</info>";
 
-        // Make sure they entered something
-        if ($packages_path === null) {
-            warningThenExit('You must enter a valid absolute path to continue the installation. Please try again.');
-        }
+			if ($default) {
+				$question .= " (defaults to: {$default})";
+			}
+
+			// Setup the question to ask the user for the config value
+            $question = new Question($question.PHP_EOL, $default);
+
+			// Setup the normalizer to ensure we have no extra spaces
+            $question->setNormalizer(static function ($value) {
+                return $value ? trim($value) : '';
+            });
+
+			switch ($config_key) {
+
+				case 'codebase_path':
+                    $question->setAutocompleterCallback($filesystem_callback);
+                    $question->setValidator(static function ($value) {
+                        // Make sure they entered something
+						if (blank($value)) {
+							throw new RuntimeException('Please enter a valid absolute path to continue the installation.');
+						}
+
+                        // Check for composer.json
+                        if (!FileSystem::exists("${value}/composer.json")) {
+                            throw new RuntimeException("Please try again: Could not find the composer.json for processmaker/processmaker in: ${value}");
+                        }
+
+						return $value;
+                    });
+
+                    break;
+
+				case 'packages_path':
+                    $question->setAutocompleterCallback($filesystem_callback);
+                    $question->setValidator(static function ($value) {
+                        // Make sure they entered something
+                        if (blank($value)) {
+                            throw new RuntimeException('Please enter a valid absolute path to continue the installation.');
+                        }
+
+						return $value;
+                    });
+
+                    break;
+
+				case 'url':
+                    $question->setValidator(static function ($value) {
+                        // Make sure they entered something
+                        if (blank($value)) {
+                            throw new RuntimeException('Please enter a valid url (e.g. http://192.168.86.20 or http://processmaker.test).');
+                        }
+
+						return $value;
+                    });
+
+					break;
+            }
+
+			// Actually ask the question and receive the input
+            $value = $helper->ask($input, $output, $question);
+
+            // Set the value with the value
+            $configuration[$config_key] = $value;
+		}
 
         // Creates the sudoers entry and the base config file/directory
-        Install::install($codebase_path, $packages_path);
+        Install::install($configuration);
 
         // Clone down all of the supported packages if the
         // packages directory is empty
-        if (count(FileSystem::scandir($packages_path)) === 0) {
+        if (count(FileSystem::scandir($configuration['packages_path'])) === 0) {
             $this->runCommand('packages:clone-all');
         }
 
