@@ -93,3 +93,8 @@ class Reset extends Facade {}
  * @see \ProcessMaker\Cli\Reset
  */
 class IDE extends Facade {}
+
+/**
+ * @see \ProcessMaker\Cli\Reset
+ */
+class Environment extends Facade {}
