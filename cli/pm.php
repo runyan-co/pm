@@ -15,6 +15,7 @@ use Illuminate\Container\Container;
 use Illuminate\Support\Str;
 use ProcessMaker\Facades\Config;
 use ProcessMaker\Facades\ContinuousIntegration;
+use ProcessMaker\Facades\Environment;
 use ProcessMaker\Facades\FileSystem;
 use ProcessMaker\Facades\Git;
 use ProcessMaker\Facades\IDE;
@@ -38,6 +39,25 @@ use function ProcessMaker\Cli\warningThenExit;
 Container::setInstance(new Container());
 
 $app = new Application('ProcessMaker CLI Tool', '1.0.1');
+
+/*
+ * -------------------------------------------------+
+ * |                                                |
+ * |    Command: env-check                          |
+ * |                                                |
+ * -------------------------------------------------+
+ */
+$app->command('env-check', function (): void {
+	try {
+        Environment::checkNodeVersion();
+        Environment::checkNpmVersion();
+        Environment::checkPhpExtensions();
+	} catch (RuntimeException $exception) {
+		warningThenExit("Environment check failed with message: {$exception->getMessage()}");
+	}
+
+	info('Environment check successful.');
+})->descriptions('Check for the correct version of node, npm, and the proper php extensions.');
 
 /*
  * -------------------------------------------------+
@@ -108,7 +128,6 @@ if (! FileSystem::isDir(PM_HOME_PATH)) {
             });
 
 			switch ($config_key) {
-
 				case 'codebase_path':
                     $question->setAutocompleterCallback($filesystem_callback);
                     $question->setValidator(static function ($value) {
@@ -170,6 +189,7 @@ if (! FileSystem::isDir(PM_HOME_PATH)) {
         }
 
         info('Installation complete!');
+
     })->descriptions('Runs the installation process for this tool. Necessary before other commands will appear.');
 } else {
 
@@ -222,7 +242,7 @@ if (! FileSystem::isDir(PM_HOME_PATH)) {
                 warning('Process(es) could not be restarted.');
             }
         } catch (RuntimeException $exception) {
-            output('<fg=red>Problem restarting process(es): </>'.PHP_EOL.$exception->getMessage());
+            output('<fg=red>Problem restarting process(es):</>'.PHP_EOL.$exception->getMessage());
         }
     })->descriptions('Attempt to start/restart the supervisor process by name if available, otherwise it restarts all processes', [
             'process' => 'The name of the supervisor process to start or restart',
