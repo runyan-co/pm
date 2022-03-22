@@ -199,9 +199,9 @@ class Packages
      *
      * @param  bool  $force
      *
-     * @return array
+     * @return void
      */
-    public function cloneAllPackages(bool $force = false): array
+    public function cloneAllPackages(bool $force = false): void
     {
         // Clear the ProcessMaker packages directory before
         // we start cloning the new ones down
@@ -210,14 +210,22 @@ class Packages
                 $this->files->rmdir($package['path']);
             }
         }
-        // Clone down the processmaker/packages meta-package to
-        // to make sure we can reference all official supported
-        // ProcessMaker 4 enterprise packages
-        if (! $this->packageExists('packages')) {
-            $this->clonePackage('packages');
-        }
 
-        return $this->getSupportedPackages();
+        // Clone down all 4.2 and 4.1 packages
+        $packages = array_merge(
+            $this->getSupportedPackages(),
+            $this->getSupportedPackages(true, '4.1-develop')
+        );
+
+        foreach ($packages as $index => $package) {
+            try {
+                if ($this->clonePackage($package)) {
+                    info("Package ${package} cloned successfully!");
+                }
+            } catch (Exception $exception) {
+                warning($exception->getMessage());
+            }
+        }
     }
 
     /**

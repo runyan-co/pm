@@ -182,12 +182,6 @@ if (! FileSystem::isDir(PM_HOME_PATH)) {
         // Creates the sudoers entry and the base config file/directory
         Install::install($configuration);
 
-        // Clone down all of the supported packages if the
-        // packages directory is empty
-        if (count(FileSystem::scandir($configuration['packages_path'])) === 0) {
-            $this->runCommand('packages:clone-all');
-        }
-
         info('Installation complete!');
 
     })->descriptions('Runs the installation process for this tool. Necessary before other commands will appear.');
@@ -659,15 +653,7 @@ if (! FileSystem::isDir(PM_HOME_PATH)) {
      * -------------------------------------------------+
      */
     $app->command('packages:clone-all [-f|--force]', function ($force = null): void {
-        foreach (Packages::getSupportedPackages() as $index => $package) {
-            try {
-                if (Packages::clonePackage($package)) {
-                    info("Package ${package} cloned successfully!");
-                }
-            } catch (Exception $exception) {
-                warning($exception->getMessage());
-            }
-        }
+        Packages::cloneAllPackages($force ?? false);
     })->descriptions('Clone all supported ProcessMaker 4 packages to a local directory', [
         '--force' => 'Delete the package locally if it exists already',
     ]);
