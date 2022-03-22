@@ -111,7 +111,7 @@ class Reset
             ? 'phpredis'
             : 'predis';
 
-        $config_value_callback = static function (string $key) {
+        $config_value = static function (string $key) {
             return ! blank(($value = Install::read($key))) ? $value : null;
         };
 
@@ -120,20 +120,20 @@ class Reset
             '--no-interaction',
             '--app-debug',
             '--telescope',
-            '--db-password='.$config_value_callback('database_password'),
-            '--db-username='.$config_value_callback('database_user'),
-            '--db-host='.$config_value_callback('database_host'),
-            '--db-port='.$config_value_callback('database_port'),
+            '--db-password='.$config_value('database_password'),
+            '--db-username='.$config_value('database_user'),
+            '--db-host='.$config_value('database_host'),
+            '--db-port='.$config_value('database_port'),
             '--data-driver=mysql',
-            '--db-name='.$config_value_callback('database_name'),
-            '--url='.$config_value_callback('url'),
-            '--password='.$config_value_callback('admin_password'),
-            '--email='.$config_value_callback('admin_email'),
-            '--username='.$config_value_callback('admin_username'),
-            '--first-name='.$config_value_callback('admin_first_name'),
-            '--last-name='.$config_value_callback('admin_last_name'),
+            '--db-name='.$config_value('database_name'),
+            '--url='.$config_value('url'),
+            '--password='.$config_value('admin_password'),
+            '--email='.$config_value('admin_email'),
+            '--username='.$config_value('admin_username'),
+            '--first-name='.$config_value('admin_first_name'),
+            '--last-name='.$config_value('admin_last_name'),
             "--redis-client={$redis_driver}",
-            '--redis-host='.$config_value_callback('redis_host'),
+            '--redis-host='.$config_value('redis_host'),
         ];
 
         if ($this->branch !== '4.1-develop') {

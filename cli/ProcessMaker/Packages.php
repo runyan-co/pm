@@ -21,17 +21,41 @@ class Packages
     public FileSystem $files;
 
     /**
-     * Packages that are required by processmaker/processmaker,
-     * but aren't included in the list of enterprise packages.
+     * Packages required by processmaker/processmaker for core BPMN functioning
      *
-     * @var array<string>
+     * @var array
      */
-    protected static array $additionalPackages = [
+    public static array $bpmnPackages = [
         'pmql',
         'nayra',
+    ];
+
+    /**
+     * Complete list of packages for the docker-based script executors
+     *
+     * @var array
+     */
+    public static array $executorPackages = [
+        'docker-executor-csharp',
+        'docker-executor-java',
         'docker-executor-lua',
         'docker-executor-php',
+        'docker-executor-php-ethos',
         'docker-executor-node',
+        'docker-executor-node-ssr',
+        'docker-executor-python-selenium',
+        'docker-executor-python',
+        'docker-executor-r',
+    ];
+
+    /**
+     * Non-bpmn and non-executor packages required for core
+     * processmaker/processmaker functionality
+     *
+     * @var array
+     */
+    public static array $otherPackages = [
+        'laravel-i18next',
     ];
 
     /**
@@ -42,6 +66,16 @@ class Packages
     {
         $this->cli = $cli;
         $this->files = $files;
+    }
+
+    /**
+     * Get all non-enterprise packages required by processmaker/processmaker
+     *
+     * @return array
+     */
+    public static function additionalPackages()
+    {
+        return array_merge(self::$bpmnPackages, self::$executorPackages, self::$otherPackages);
     }
 
     /**
@@ -106,7 +140,7 @@ class Packages
             // Merge the supported enterprise package names with
             // the handful of other packages required for the
             // primary (processmaker/processmaker) app to function
-            $supported_packages = array_merge($supported_packages ?? [], self::$additionalPackages);
+            $supported_packages = array_merge($supported_packages ?? [], self::additionalPackages());
         }
 
         // Sort it and and remove two packages so they can be
@@ -126,11 +160,11 @@ class Packages
         // first, assuming the returned order is relied on
         // for installation
         return $supported_packages->prepend('package-collections')
-            ->prepend('package-savedsearch')
-            ->prepend('connector-send-email')
-            ->prepend('docker-executor-node-ssr')
-            ->prepend('packages')
-            ->toArray();
+                                  ->prepend('package-savedsearch')
+                                  ->prepend('connector-send-email')
+                                  ->prepend('docker-executor-node-ssr')
+                                  ->prepend('packages')
+                                  ->toArray();
     }
 
     /**
@@ -144,17 +178,17 @@ class Packages
         $name = Str::replace('processmaker/', '', $name);
 
         if (! $force && $this->packageExists($name)) {
-            throw new LogicException("Package already exists: processmaker/${name}");
+            throw new LogicException("Package already exists: processmaker/{$name}");
         }
 
         if ($force) {
-            $this->files->rmdir(Config::packagesPath()."/${name}");
+            $this->files->rmdir(Config::packagesPath()."/{$name}");
         }
 
-        $command = "git clone https://github.com/processmaker/${name}";
+        $command = "git clone https://github.com/processmaker/{$name}";
 
         $output = $this->cli->run($command, function ($code, $out) use ($name): void {
-            throw new RuntimeException("Failed to clone ${name}: ".PHP_EOL.$out);
+            throw new RuntimeException("Failed to clone {$name}: ".PHP_EOL.$out);
         }, Config::packagesPath());
 
         return $this->packageExists($name);
@@ -203,6 +237,8 @@ class Packages
     /**
      * Get the names of the local composer packages
      *
+     * @param  string|null  $package_directory
+     *
      * @return array
      */
     public function getPackagesListFromDirectory(?string $package_directory = null): array
@@ -228,7 +264,7 @@ class Packages
      */
     public function getPackages(): array
     {
-        $packages = array_map(function ($package_name) {
+        $packages = array_map(static function ($package_name) {
             return [
                 'name' => $package_name,
                 'path' => Config::packagesPath()."/${package_name}",
@@ -284,23 +320,15 @@ class Packages
         foreach ($this->getPackages() as $package) {
             $path = $package['path'];
 
-            $version_key = $updated
-                ? 'updated_version'
-                : 'version';
-
-            $branch_key = $updated
-                ? 'updated_branch'
-                : 'branch';
-
-            $hash_key = $updated
-                ? 'updated_commit_hash'
-                : 'commit_hash';
+            $version_key = $updated ? 'updated_version' : 'version';
+            $branch_key = $updated ? 'updated_branch' : 'branch';
+            $hash_key = $updated ? 'updated_commit_hash' : 'commit_hash';
 
             $metadata[$package['name']] = [
-                'name'   => $package['name'],
-                $version_key   => $this->getPackageVersion($path),
-                $branch_key   => $this->getCurrentGitBranchName($path),
-                $hash_key   => Git::getCurrentCommitHash($path),
+                'name' => $package['name'],
+                $version_key => $this->getPackageVersion($path),
+                $branch_key => $this->getCurrentGitBranchName($path),
+                $hash_key => Git::getCurrentCommitHash($path),
             ];
         }
 
