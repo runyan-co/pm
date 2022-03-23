@@ -519,9 +519,21 @@ class Packages
 
         // Build the stack of commands to run
         return $enterprise_packages->keyBy(fn ($package) => $package)->transform(function (string $package) {
+
+            $artisan_install_command = PHP_BINARY." artisan ${package}:install --no-interaction";
+
+            // Concatenate API keys for packages which require them
+            if ($package === 'connector-slack' && ! blank($key = Install::get('slack_api_key'))) {
+                $artisan_install_command = "export SLACK_OAUTH_ACCESS_TOKEN={$key} && ".$artisan_install_command;
+            }
+
+            if ($package === 'package-googleplaces' && ! blank($key = Install::get('google_places_api_key'))) {
+                $artisan_install_command = "export GOOGLE_API_TOKEN={$key} && ".$artisan_install_command;
+            }
+
             return new Collection([
                 COMPOSER_BINARY." require processmaker/{$package} --no-interaction",
-                PHP_BINARY." artisan ${package}:install --no-interaction",
+                $artisan_install_command,
                 PHP_BINARY." artisan vendor:publish --tag={$package} --no-interaction",
             ]);
         })->put('horizon', new Collection([PHP_BINARY.' artisan horizon:terminate']));

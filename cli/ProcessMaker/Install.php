@@ -70,6 +70,11 @@ class Install
         $this->files->ensureDirExists(PM_HOME_PATH, user());
     }
 
+    public static function get(string $key)
+    {
+        return ! blank(($value = resolve(self::class)->read($key))) ? $value : null;
+    }
+
     /**
      * Read the configuration file as JSON.
      *

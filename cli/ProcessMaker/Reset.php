@@ -111,29 +111,26 @@ class Reset
             ? 'phpredis'
             : 'predis';
 
-        $config_value = static function (string $key) {
-            return ! blank(($value = Install::read($key))) ? $value : null;
-        };
 
         $install_command = [
             PHP_BINARY.' artisan processmaker:install',
             '--no-interaction',
             '--app-debug',
             '--telescope',
-            '--db-password='.$config_value('database_password'),
-            '--db-username='.$config_value('database_user'),
-            '--db-host='.$config_value('database_host'),
-            '--db-port='.$config_value('database_port'),
+            '--db-password='.Install::get('database_password'),
+            '--db-username='.Install::get('database_user'),
+            '--db-host='.Install::get('database_host'),
+            '--db-port='.Install::get('database_port'),
             '--data-driver=mysql',
-            '--db-name='.$config_value('database_name'),
-            '--url='.$config_value('url'),
-            '--password='.$config_value('admin_password'),
-            '--email='.$config_value('admin_email'),
-            '--username='.$config_value('admin_username'),
-            '--first-name='.$config_value('admin_first_name'),
-            '--last-name='.$config_value('admin_last_name'),
+            '--db-name='.Install::get('database_name'),
+            '--url='.Install::get('url'),
+            '--password='.Install::get('admin_password'),
+            '--email='.Install::get('admin_email'),
+            '--username='.Install::get('admin_username'),
+            '--first-name='.Install::get('admin_first_name'),
+            '--last-name='.Install::get('admin_last_name'),
             "--redis-client={$redis_driver}",
-            '--redis-host='.$config_value('redis_host'),
+            '--redis-host='.Install::get('redis_host'),
         ];
 
         if ($this->branch !== '4.1-develop') {

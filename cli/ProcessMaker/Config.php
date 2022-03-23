@@ -25,6 +25,16 @@ class Config
             'default' => '',
         ],
 
+        'slack_api_key' => [
+            'description' => 'Enter your Slack API key',
+            'default' => ''
+        ],
+
+        'google_places_api_key' => [
+            'description' => 'Enter your Google Places API key',
+            'default' => ''
+        ],
+
         'database_name' => [
             'description' => 'Mysql database name to be used by the codebase',
             'default' => 'processmaker',
