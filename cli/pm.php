@@ -29,6 +29,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Question\ConfirmationQuestion;
 use Symfony\Component\Console\Question\Question;
 
+use function ProcessMaker\Cli\codebase_path;
 use function ProcessMaker\Cli\info;
 use function ProcessMaker\Cli\output;
 use function ProcessMaker\Cli\resolve;
@@ -321,6 +322,15 @@ if (! FileSystem::isDir(PM_HOME_PATH)) {
                 warningThenExit('Reset aborted.');
             }
 
+            // Grab an instance of the CommandLine class
+            $cli = resolve(\ProcessMaker\Cli\CommandLine::class);
+
+			// Since we completely remove the codebase directory when resetting,
+	        // we need to make sure the current working directory is different
+			if (getcwd() === codebase_path()) {
+				warningThenExit('This command cannot be executed directly in the codebase directly. Please change to the another directory and try again.');
+			}
+
             // Put together the commands necessary
             // to reset the core codebase
             $command_set = Reset::buildResetCommands($branch, $bounce_database);
@@ -329,9 +339,6 @@ if (! FileSystem::isDir(PM_HOME_PATH)) {
             if ($no_npm && array_key_exists('npm', $command_set)) {
                 unset($command_set['npm']);
             }
-
-            // Grab an instance of the CommandLine class
-            $cli = resolve(\ProcessMaker\Cli\CommandLine::class);
 
             // Count up the total number of steps in the reset process
             $steps = collect($command_set)->flatten()->count();
@@ -478,7 +485,7 @@ if (! FileSystem::isDir(PM_HOME_PATH)) {
     $app->command('core:install-packages [-4|--for_41_develop]',
         function (InputInterface $input, OutputInterface $output): void {
 
-        // Indicates if we should install the 4.1-develop
+            // Indicates if we should install the 4.1-develop
             // versions of each package or the 4.2
             $for_41_develop = $input->getOption('for_41_develop');
 

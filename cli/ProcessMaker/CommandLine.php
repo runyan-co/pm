@@ -124,19 +124,17 @@ class CommandLine
     {
         $onError = $onError ?: static function (): void {};
 
+        $processOutput = '';
+
         if (method_exists(Process::class, 'fromShellCommandline')) {
             $process = Process::fromShellCommandline($command);
         } else {
             $process = new Process($command);
         }
 
-        if ($workingDir) {
-            if (is_dir($workingDir) && ! is_file($workingDir)) {
-                $process->setWorkingDirectory($workingDir);
-            }
+        if (is_string($workingDir) && is_dir($workingDir) && ! is_file($workingDir)) {
+            $process->setWorkingDirectory($workingDir);
         }
-
-        $processOutput = '';
 
         $process->setTimeout(null)->run(
             function ($type, $line) use (&$processOutput): void {
