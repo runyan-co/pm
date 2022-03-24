@@ -349,7 +349,7 @@ class Packages
      *
      * @return array
      */
-    public function buildPullCommands(string $branch, array $commands = []): array
+    public function buildPullCommands(string $branch = null, array $commands = []): array
     {
         foreach ($this->getPackages() as $package) {
             $package = (object) $package;
@@ -359,7 +359,7 @@ class Packages
                 'git reset --hard',
                 'git clean -d -f .',
                 'git fetch --all',
-                "git checkout {$branch}",
+                "git checkout ".$branch ?? Git::getDefaultBranch($package->path),
                 'git pull --force',
                 "if [[ -d ../{$package->name}/.idea ]]; mv ../{$package->name}/.idea . && rm -r ../{$package->name}; fi",
             ];
@@ -370,36 +370,6 @@ class Packages
         }
 
         return $commands;
-    }
-
-    /**
-     * @throws \Illuminate\Contracts\Container\BindingResolutionException
-     */
-    public function pull(bool $verbose = false, ?string $branch = null): void
-    {
-        // A quick command (thanks Nolan!) to grab the default branch
-        $get_default_git_branch = "$(git symbolic-ref refs/remotes/origin/HEAD | sed 's@^refs/remotes/origin/@@')";
-
-        // Build the commands for each package (keyed by package name)
-        $commands = $this->buildPullCommands($branch ?? $get_default_git_branch);
-
-        // Store the pre-pull metadata for each package
-        $metadata = $this->takePackagesSnapshot();
-
-        // Create a new ProcessManagerFacade instance to run the
-        // git commands in parallel where possible
-        $processManager = resolve(ProcessManager::class);
-
-        // Set verbosity for output to stdout
-        $processManager->setVerbosity($verbose);
-
-        // Set a closure to be called when the final process exits
-        $processManager->setFinalCallback(function () use ($metadata): void {
-            $this->outputPullResults($metadata);
-        });
-
-        // Build the process queue and run
-        $processManager->buildProcessesBundleAndStart($commands);
     }
 
     /**
@@ -429,70 +399,6 @@ class Packages
     }
 
     /**
-     * @param  array  $pre_pull_package_metadata
-     */
-    public function outputPullResults(array $pre_pull_package_metadata): void
-    {
-        $table = (object) [];
-
-        // Build the table rows
-        foreach ($this->takePackagesSnapshot(true) as $package => $updated) {
-            $table->$package = (object) array_merge($pre_pull_package_metadata[$package], $updated);
-        }
-
-        // Sort the columns in a more sensible way
-        foreach ($table as $key => $row) {
-            $table->$key = (object) [
-                'name' => $row->name,
-                'version' => $row->version,
-                'updated_version' => $row->updated_version,
-                'branch' => $row->branch,
-                'updated_branch' => $row->updated_branch,
-                'commit_hash' => $row->commit_hash,
-                'updated_commit_hash' => $row->updated_commit_hash,
-            ];
-        }
-
-        // Add console styling
-        foreach ($table as $key => $row) {
-            // Highlight the package name
-            $table->$key->name = "<fg=cyan>{$row->name}</>";
-
-            // If the versions are the same, no updated occurred.
-            // If they are different, let's make it easier to see.
-            if ($row->version !== $row->updated_version) {
-                $table->$key->updated_version = "<info>{$row->updated_version}</info>";
-            }
-
-            // Do the same thing with branches, since we may
-            // have switch to 4.1 or 4.2 during the pull, which
-            // is set by the user by adding a flag to the command
-            if ($row->branch !== $row->updated_branch) {
-                $table->$key->updated_branch = "<info>{$row->updated_branch}</info>";
-            }
-
-            // One more time to see if the commit hash has changed
-            if ($row->commit_hash !== $row->updated_commit_hash) {
-                $table->$key->updated_commit_hash = "<info>{$row->updated_commit_hash}</info>";
-            }
-        }
-
-        // Change the objects back into arrays
-        foreach ($table as $key => $row) {
-            $table->$key = (array) $row;
-        }
-
-        // Add a new line for space above the table
-        output(PHP_EOL);
-
-        // Create the table columns
-        $columns = ['Name', 'Version ->', '-> Version', 'Branch ->', '-> Branch', 'Hash ->', '-> Hash'];
-
-        // Format our results in an easy-to-ready table
-        table($columns, (array) $table);
-    }
-
-    /**
      * Build the stack of commands to composer require and
      * install each enterprise ProcessMaker 4 package
      */
@@ -517,8 +423,11 @@ class Packages
         // Grab the list of supported enterprise packages
         $enterprise_packages = new Collection($this->getSupportedPackages(true, $branch));
 
+        // Find the composer executable
+        $composer = $this->cli->findExecutable('composer');
+
         // Build the stack of commands to run
-        return $enterprise_packages->keyBy(fn ($package) => $package)->transform(function (string $package) {
+        return $enterprise_packages->keyBy(fn ($package) => $package)->transform(function (string $package) use ($composer) {
 
             $artisan_install_command = PHP_BINARY." artisan ${package}:install --no-interaction";
 
@@ -532,7 +441,7 @@ class Packages
             }
 
             return new Collection([
-                COMPOSER_BINARY." require processmaker/{$package} --no-interaction",
+                "{$composer} require processmaker/{$package} --no-interaction",
                 $artisan_install_command,
                 PHP_BINARY." artisan vendor:publish --tag={$package} --no-interaction",
             ]);

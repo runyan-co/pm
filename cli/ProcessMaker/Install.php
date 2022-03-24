@@ -54,6 +54,11 @@ class Install
         $this->files->chown($this->path(), user());
     }
 
+    public function installed()
+    {
+        return $this->files->exists(PM_HOME_PATH);
+    }
+
     /**
      * Forcefully delete the Valet home configuration directory and contents.
      */

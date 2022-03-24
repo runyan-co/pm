@@ -11,7 +11,7 @@ use React\ChildProcess\Process;
 class ProcessManager
 {
     /**
-     * @var
+     * @var callable
      */
     public $finalCallback;
 
@@ -49,6 +49,17 @@ class ProcessManager
     }
 
     /**
+     * @param  callable  $callback
+     * @param  array  $arguments
+     *
+     * @return void
+     */
+    public function setFinalCallback(callable $callback): void
+    {
+        $this->finalCallback = $callback;
+    }
+
+    /**
      * @param  string|null  $key
      *
      * @return \Illuminate\Support\Collection
@@ -66,8 +77,8 @@ class ProcessManager
      */
     public function addProcessOutput(string $key, $output): void
     {
-        if (! $this->getProcessOutput()->has($key)) {
-            $this->getProcessOutput()->put($key, new Collection());
+        if (!$this->getProcessOutput()->has($key)) {
+             $this->getProcessOutput()->put($key, new Collection());
         }
 
         $this->getProcessOutput($key)->push($output);
@@ -104,40 +115,48 @@ class ProcessManager
      *
      * @return \Illuminate\Support\Collection
      */
-    public function getProcessCollections(string $key): Collection
+    public function getProcessCollection(string $key): Collection
     {
-        if (! $this->processCollections->get($key) instanceof Collection) {
-            $this->processCollections->put($key, new Collection());
+        if (!$this->processCollections->get($key) instanceof Collection) {
+             $this->processCollections->put($key, new Collection());
         }
 
         return $this->processCollections->get($key);
     }
 
     /**
+     * Build the process bundle(s), set the final callback (once all
+     * processes have exited) and start each bundle of processes
+     *
      * @param  array  $commands
+     * @param  callable|null  $callback
+     *
+     * @return void
      */
-    public function buildProcessesBundleAndStart(array $commands): void
+    public function start(array $commands, callable $callback = null): void
     {
+        if (is_callable($callback)) {
+            $this->setFinalCallback($callback);
+        }
+
         $this->startProcessesBundle($this->buildProcessesBundle($commands));
     }
 
     /**
      * @param  array  $commands
+     *
+     * @return \Illuminate\Support\Collection
      */
     public function buildProcessesBundle(array $commands): Collection
     {
-        $commands = array_filter($commands, function ($command) {
-            return ! is_string($command);
-        });
+        $commands = array_filter($commands, static fn ($command) => ! is_string($command));
 
         if (blank($commands)) {
             throw new LogicException('Commands array cannot be empty');
         }
 
         $bundles = collect($commands)->transform(function (array $set) {
-            return collect(array_map(function ($command) {
-                return new Process($command);
-            }, $set));
+            return collect(array_map(static fn ($command) => new Process($command), $set));
         });
 
         return $this->setExitListeners($bundles);
@@ -146,21 +165,11 @@ class ProcessManager
     /**
      * @return false|mixed|void
      */
-    public function getFinalCallback()
+    public function callFinalCallback()
     {
         if (is_callable($this->finalCallback)) {
             return call_user_func($this->finalCallback);
         }
-    }
-
-    /**
-     * @param  callable  $callback
-     *
-     * @return void
-     */
-    public function setFinalCallback(callable $callback): void
-    {
-        $this->finalCallback = $callback;
     }
 
     /**
@@ -202,7 +211,7 @@ class ProcessManager
                     }
 
                     // Add to the "exited" process collection
-                    $this->getProcessCollections('exited')->push($process);
+                    $this->getProcessCollection('exited')->push($process);
 
                     // Get the info we need to output to stdout
                     $pid = $process->getPid();
@@ -218,9 +227,9 @@ class ProcessManager
 
                     // Add to the process collections
                     if ($exitCode === 0) {
-                        $this->getProcessCollections('successful')->push($process);
+                        $this->getProcessCollection('successful')->push($process);
                     } else {
-                        $this->getProcessCollections('errors')->push($process);
+                        $this->getProcessCollection('errors')->push($process);
                     }
 
                     // Add to the processOutput property for reading later
@@ -234,18 +243,16 @@ class ProcessManager
                         $this->startProcessAndPipeOutput($next_process);
                     }
 
-                    $queued = $this->getProcessCollections('queued')->count();
-                    $exited = $this->getProcessCollections('exited')->count();
-
                     // All processes are finished
-                    if ($queued === $exited) {
+                    if ($this->finished()) {
                         // Keeps the stdout clean during verbose mode
-                        if (! $this->verbose) {
+                        if (!$this->verbose) {
                             $this->cli->getProgress()->finish();
+                            $this->cli->getProgress()->clear();
                         }
 
                         // Last but not least, run the bound callback
-                        $this->getFinalCallback();
+                        $this->callFinalCallback();
                     }
                 });
 
@@ -257,15 +264,24 @@ class ProcessManager
     }
 
     /**
+     * All processes have exited
+     *
+     * @return bool
+     */
+    public function finished(): bool
+    {
+        return $this->getProcessCollection('queued')->count() ===
+               $this->getProcessCollection('exited')->count();
+    }
+
+    /**
      * @param  \Illuminate\Support\Collection  $bundle
      *
      * @return \Illuminate\Support\Collection
      */
     private function validateBundle(Collection $bundle): Collection
     {
-        return $bundle->reject(function ($process) {
-            return ! $process instanceof Process;
-        });
+        return $bundle->reject(fn ($process) => ! $process instanceof Process);
     }
 
     /**
@@ -276,9 +292,7 @@ class ProcessManager
     private function getStartProcesses(Collection $bundles): Collection
     {
         return $this->validateBundle(
-            $bundles->map(function (Collection $bundle) {
-                return $bundle->first();
-            })
+            $bundles->map(fn (Collection $bundle) => $bundle->first())
         );
     }
 
@@ -303,7 +317,7 @@ class ProcessManager
             $bundle->transform(function (Process $process) use (&$index) {
                 $process->index = $index++;
 
-                $this->getProcessCollections('queued')->push($process);
+                $this->getProcessCollection('queued')->push($process);
 
                 return $process;
             });
@@ -331,6 +345,6 @@ class ProcessManager
             $this->addProcessOutput($process->getCommand(), $output);
         });
 
-        $this->getProcessCollections('started')->push($process);
+        $this->getProcessCollection('started')->push($process);
     }
 }

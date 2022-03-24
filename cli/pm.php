@@ -14,6 +14,8 @@ if (file_exists(__DIR__.'/../vendor/autoload.php')) {
 use Illuminate\Container\Container;
 use Illuminate\Support\Str;
 use ProcessMaker\Facades\Config;
+use ProcessMaker\Cli\ProcessManager;
+use ProcessMaker\Facades\SystemResources;
 use ProcessMaker\Facades\ContinuousIntegration;
 use ProcessMaker\Facades\Environment;
 use ProcessMaker\Facades\FileSystem;
@@ -49,15 +51,17 @@ $app = new Application('ProcessMaker CLI Tool', '1.0.2');
  * -------------------------------------------------+
  */
 $app->command('env-check', function (): void {
-	try {
-        Environment::checkNodeVersion();
-        Environment::checkNpmVersion();
-        Environment::checkPhpExtensions();
-	} catch (RuntimeException $exception) {
-		warningThenExit("Environment check failed with message: {$exception->getMessage()}");
-	}
+	$success = true;
 
-	info('Environment check successful.');
+    foreach (Environment::environmentChecks() as $result) {
+		if ($result instanceof RuntimeException) {
+            $success = output("<fg=red>Environment check failed with message:</> {$result->getMessage()}");
+		}
+    }
+
+	if ($success) {
+		info('Environment checks successful!');
+	}
 })->descriptions('Check for the correct version of node, npm, and the proper php extensions.');
 
 /*
@@ -81,12 +85,28 @@ if (! FileSystem::isDir(PM_HOME_PATH)) {
      */
     $app->command('install', function (InputInterface $input, OutputInterface $output): void {
 
-		// A little explanation
-	    output('You\'ll only need to run this install process one time. All of the values will be saved to ~/.config/pm/config.json.'.PHP_EOL);
-
         // First thing we want to do is ask the user to
         // tell us the absolute path to the core codebase
         $helper = $this->getHelperSet()->get('question');
+		$question = new ConfirmationQuestion('<comment>One or more environment checks failed. Continue with installation?</comment> (yes/no) ');
+        $success = true;
+
+		info('Running environment checks...');
+
+		// Run a set of environment checks and print relevant info when one fails
+        foreach (Environment::environmentChecks() as $result) {
+            if ($result instanceof RuntimeException) {
+                $success = output("<fg=red>Environment check failed with message:</> {$result->getMessage()}");
+            }
+        }
+
+		// If the environment check failed, ask if we should continue anyway
+		if (!$success && !$helper->ask($input, $output, $question)) {
+			exit(0);
+		}
+
+		// A little explanation
+	    output(PHP_EOL.'You\'ll only need to run this install process one time. All of the values will be saved to ~/.config/pm/config.json.'.PHP_EOL);
 
         // Callback to autocomplete the directories available
         // as the user is typing
@@ -645,8 +665,83 @@ if (! FileSystem::isDir(PM_HOME_PATH)) {
         // Set verbosity level of output
         $verbose = $input->getOption('verbose');
 
-        // Put everything together and run it
-        Packages::pull($verbose, $for_41_develop ? '4.1-develop' : null);
+		// Grab an instance of the Packages class
+		$packages = resolve(\ProcessMaker\Cli\Packages::class);
+
+        // Build the commands for each package (keyed by package name)
+        $commands = $packages->buildPullCommands($for_41_develop ? '4.1-develop' : 'develop');
+
+        // Store the pre-pull metadata for each package
+		$metadata = $packages->takePackagesSnapshot();
+
+		// Grab an instance ProcessManager
+        $processManager = resolve(\ProcessMaker\Cli\ProcessManager::class);
+
+		// Set verbosity
+		$processManager->setVerbosity($verbose);
+
+        // Set a closure to be called when the final process
+        // exits, then build the process queue and run
+		$processManager->start($commands, function () use ($metadata, $packages) {
+
+			// Package metadata to fill a cli table to
+			// inform the user how the pull went
+            $table = (object) [];
+
+            // Build the table rows
+            foreach ($packages->takePackagesSnapshot(true) as $package => $updated) {
+                $table->$package = (object) array_merge($metadata[$package], $updated);
+            }
+
+            // Sort the columns in a more sensible way
+            foreach ($table as $key => $row) {
+                $table->$key = (object) [
+                    'name' => $row->name,
+                    'version' => $row->version,
+                    'updated_version' => $row->updated_version,
+                    'branch' => $row->branch,
+                    'updated_branch' => $row->updated_branch,
+                    'commit_hash' => $row->commit_hash,
+                    'updated_commit_hash' => $row->updated_commit_hash,
+                ];
+            }
+
+            // Add console styling
+            foreach ($table as $key => $row) {
+                // Highlight the package name
+                $table->$key->name = "<fg=cyan>{$row->name}</>";
+
+                // If the versions are the same, no updated occurred.
+                // If they are different, let's make it easier to see.
+                if ($row->version !== $row->updated_version) {
+                    $table->$key->updated_version = "<info>{$row->updated_version}</info>";
+                }
+
+                // Do the same thing with branches, since we may
+                // have switch to 4.1 or 4.2 during the pull, which
+                // is set by the user by adding a flag to the command
+                if ($row->branch !== $row->updated_branch) {
+                    $table->$key->updated_branch = "<info>{$row->updated_branch}</info>";
+                }
+
+                // One more time to see if the commit hash has changed
+                if ($row->commit_hash !== $row->updated_commit_hash) {
+                    $table->$key->updated_commit_hash = "<info>{$row->updated_commit_hash}</info>";
+                }
+            }
+
+            // Change the objects back into arrays
+            foreach ($table as $key => $row) {
+                $table->$key = (array) $row;
+            }
+
+            // Create the table columns
+            $columns = ['Name', 'Version ->', '-> Version', 'Branch ->', '-> Branch', 'Hash ->', '-> Hash'];
+
+            // Format our results in an easy-to-ready table
+            table($columns, (array) $table);
+		});
+
     })->descriptions(
         'Resets and updates the locally stored ProcessMaker 4 composer packages to the latest from GitHub.',
         ['--for_41_develop' => 'Change each package to the correct version for the 4.1 version of processmaker/processmaker']

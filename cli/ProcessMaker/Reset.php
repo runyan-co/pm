@@ -29,7 +29,7 @@ class Reset
     ];
 
     protected static array $composerCommands = [
-        COMPOSER_BINARY.' install --optimize-autoloader --no-interaction --no-progress',
+        'composer install --optimize-autoloader --no-interaction --no-progress',
     ];
 
     protected static array $npmCommands = [
@@ -85,7 +85,13 @@ class Reset
             ];
         }
 
-        $composerCommands = ['composer' => static::$composerCommands];
+        // Find the composer executable
+        $composer = $this->cli->findExecutable('composer');
+
+        // Make sure the composer executable is referenced absolutely
+        $composerCommands = ['composer' => array_map(static function ($line) use ($composer) {
+            return str_replace('composer', $composer, $line);
+        }, static::$composerCommands)];
 
         $artisanInstallCommands = ['artisan install' => [$this->buildartisanInstallCommands()]];
 

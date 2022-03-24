@@ -23,9 +23,6 @@ if (! defined('USER_HOME')) {
     define('USER_HOME', getenv('HOME'));
 }
 
-if (! defined('COMPOSER_BINARY')) {
-    define('COMPOSER_BINARY', Cli::findExecutable('composer'));
-}
 /**
  * @param  string  $output
  * @param  int  $exitCode
