@@ -41,7 +41,7 @@ use function ProcessMaker\warningThenExit;
 
 Container::setInstance(new Container());
 
-$app = new Application('ProcessMaker CLI Tool', '1.0.2');
+$app = new Application('ProcessMaker CLI Tool', '1.1.0');
 
 /*
  * -------------------------------------------------+
