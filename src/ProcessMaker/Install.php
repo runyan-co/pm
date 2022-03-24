@@ -2,18 +2,21 @@
 
 declare(strict_types=1);
 
-namespace ProcessMaker\Cli;
+namespace ProcessMaker;
 
 use ProcessMaker\Facades\CommandLine as Cli;
 
 class Install
 {
-    public FileSystem $files;
+    /**
+     * @var \ProcessMaker\FileSystem
+     */
+    public $files;
 
-    public string $bin = HOMEBREW_PREFIX.'/bin/pm';
+    public $bin = HOMEBREW_PREFIX.'/bin/pm';
 
     /**
-     * @param  \ProcessMaker\Cli\FileSystem  $files
+     * @param  \ProcessMaker\FileSystem  $files
      */
     public function __construct(FileSystem $files)
     {
@@ -54,7 +57,7 @@ class Install
         $this->files->chown($this->path(), user());
     }
 
-    public function installed()
+    public function installed(): bool
     {
         return $this->files->exists(PM_HOME_PATH);
     }
@@ -75,6 +78,9 @@ class Install
         $this->files->ensureDirExists(PM_HOME_PATH, user());
     }
 
+    /**
+     * @throws \Illuminate\Contracts\Container\BindingResolutionException
+     */
     public static function get(string $key)
     {
         return ! blank(($value = resolve(self::class)->read($key))) ? $value : null;
@@ -86,13 +92,10 @@ class Install
      * @param  string|null  $key
      *
      * @return array|string
-     * @throws \JsonException
      */
     public function read(string $key = null)
     {
-        $json = json_decode(
-            $this->files->get($this->path()), true, 512, JSON_THROW_ON_ERROR
-        );
+        $json = json_decode($this->files->get($this->path()), true);
 
         if ($key && is_array($json) && array_key_exists($key, $json)) {
             return $json[$key];

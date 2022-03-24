@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace ProcessMaker\Cli;
+namespace ProcessMaker;
 
 use ProcessMaker\Facades\Install;
 
@@ -13,7 +13,7 @@ class Config
      *
      * @var array
      */
-    public static array $defaults = [
+    public static $defaults = [
 
         'packages_path' => [
             'description' => 'Absolute path to the directory containing all local copies of enterprise composer packages',

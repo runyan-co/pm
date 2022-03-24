@@ -14,13 +14,8 @@ fi
 # If we are in the global Composer "bin" directory, we need to bump our
 # current directory up two, so that we will correctly proxy into the
 # Valet CLI script which is written in PHP. Will use PHP to do it.
-if [ ! -f "$DIR/cli/pm.php" ]; then
+if [ ! -f "$DIR/src/pm.php" ]; then
     DIR=$(php -r "echo realpath('$DIR/../runyan-co/pm');")
 fi
 
-#if [[ "$EUID" -ne 0 ]]; then
-#    sudo USER="$USER" --preserve-env "$SOURCE" "$@"
-#    exit
-#fi
-
-php "$DIR/cli/pm.php" "$@"
+php "$DIR/src/pm.php" "$@"

@@ -1,9 +1,9 @@
 <?php
 
 use PHPUnit\Framework\TestCase;
-use ProcessMaker\Cli\CommandLine;
-use \PackagesCi;
-use function ProcessMaker\Cli\swap;
+use ProcessMaker\CommandLine;
+
+use function ProcessMaker\swap;
 
 class PackagesCiTest extends TestCase
 {
@@ -23,7 +23,7 @@ class PackagesCiTest extends TestCase
     /**
      * @return void
      */
-    public function testCiInstall()
+    public function testCiInstall(): void
     {
         $cli = Mockery::mock(CommandLine::class);
         $any = Mockery::any();

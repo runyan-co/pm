@@ -1,6 +1,6 @@
 <?php
 
-namespace ProcessMaker\Cli;
+namespace ProcessMaker;
 
 use Generator;
 use RuntimeException;
@@ -25,14 +25,17 @@ class Environment
         'timeout' => '"timeout" executable not found. You may need to install via homebrew using `brew install coreutils`',
     ];
 
-    protected static array $availableChecks = [
+    protected static $availableChecks = [
         'checkExecutables', 'checkPhpExtensions', 'checkNodeVersion', 'checkNpmVersion'
     ];
 
-    protected CommandLine $cli;
+    /**
+     * @var \ProcessMaker\CommandLine
+     */
+    protected $cli;
 
     /**
-     * @param  \ProcessMaker\Cli\CommandLine  $cli
+     * @param  \ProcessMaker\CommandLine  $cli
      */
     public function __construct(CommandLine $cli)
     {
@@ -64,7 +67,7 @@ class Environment
      *
      * @return void
      */
-    public function checkExecutables()
+    public function checkExecutables(): void
     {
         foreach (self::EXECUTABLES as $executable => $message) {
             $this->cli->run("which {$executable}", static function ($errorCode, $output) use ($message) {
@@ -80,7 +83,7 @@ class Environment
      *
      * @throws \RuntimeException
      */
-    public function checkPhpExtensions()
+    public function checkPhpExtensions(): void
     {
         foreach (self::PHP_EXTENSIONS as $extension => $url) {
             if (!extension_loaded($extension)) {
@@ -96,7 +99,7 @@ class Environment
      *
      * @throws \RuntimeException
      */
-    public function checkNodeVersion()
+    public function checkNodeVersion(): void
     {
         $version = $this->cli->runCommand('node -v', static function ($exitCode, $output) {
             throw new RuntimeException($output);
@@ -114,7 +117,7 @@ class Environment
      *
      * @throws \RuntimeException
      */
-    public function checkNpmVersion()
+    public function checkNpmVersion(): void
     {
         $version = $this->cli->runCommand('npm -v', static function ($exitCode, $output) {
             throw new RuntimeException($output);

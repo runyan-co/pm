@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace ProcessMaker\Cli;
+namespace ProcessMaker;
 
 use Illuminate\Support\Str;
 use Symfony\Component\Console\Helper\ProgressBar;
@@ -19,7 +19,7 @@ class CommandLine
     /**
      * @var float
      */
-    private float $time;
+    private $time;
 
     public function __construct()
     {

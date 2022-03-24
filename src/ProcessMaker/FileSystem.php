@@ -2,17 +2,17 @@
 
 declare(strict_types=1);
 
-namespace ProcessMaker\Cli;
+namespace ProcessMaker;
 
-use ProcessMaker\Facades\CommandLine as Cli;
 use RuntimeException;
+use ProcessMaker\Facades\CommandLine as Cli;
 
 class FileSystem
 {
     /**
      * Determine if the given path is a directory.
      */
-    public function isDir(string $path): bool
+    public function is_dir(string $path): bool
     {
         return is_dir($path);
     }
@@ -38,7 +38,7 @@ class FileSystem
      */
     public function rmdir(string $path): bool
     {
-        if (! $this->isDir($path)) {
+        if (! $this->is_dir($path)) {
             return false;
         }
 
@@ -72,7 +72,7 @@ class FileSystem
      */
     public function ensureDirExists(string $path, ?string $owner = null, int $mode = 0755): void
     {
-        if (! $this->isDir($path)) {
+        if (! $this->is_dir($path)) {
             $this->mkdir($path, $owner, $mode);
         }
     }

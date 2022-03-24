@@ -2,24 +2,25 @@
 
 declare(strict_types=1);
 
-namespace ProcessMaker\Cli;
+namespace ProcessMaker;
 
 use Illuminate\Container\Container;
 use ProcessMaker\Facades\CommandLine as Cli;
 use ProcessMaker\Facades\Config;
-use RuntimeException;
 use Symfony\Component\Console\Helper\Table;
 use Symfony\Component\Console\Output\ConsoleOutput;
 
-if (! defined('HOMEBREW_PREFIX')) {
+use function random_int;
+
+if (!defined('HOMEBREW_PREFIX')) {
     define('HOMEBREW_PREFIX', Cli::run('printf $(brew --prefix)'));
 }
 
-if (! defined('PM_HOME_PATH')) {
+if (!defined('PM_HOME_PATH')) {
     define('PM_HOME_PATH', $_SERVER['HOME'] . '/.config/pm');
 }
 
-if (! defined('USER_HOME')) {
+if (!defined('USER_HOME')) {
     define('USER_HOME', getenv('HOME'));
 }
 
@@ -29,8 +30,7 @@ if (! defined('USER_HOME')) {
  *
  * @return string
  */
-function warningThenExit(string $output, int $exitCode = 0): string
-{
+function warningThenExit(string $output, int $exitCode = 0): string {
     return warning($output) . exit($exitCode);
 }
 
@@ -46,8 +46,8 @@ function warningThenExit(string $output, int $exitCode = 0): string
  *
  * @throws \Exception
  */
-function tmpdir($dir = null, $prefix = 'tmp_', $mode = 0700, $maxAttempts = 100)
-{
+function tmpdir($dir = null, $prefix = 'tmp_', $mode = 0700, $maxAttempts = 100) {
+
     if (is_null($dir)) {
         $dir = sys_get_temp_dir();
     }
@@ -65,7 +65,7 @@ function tmpdir($dir = null, $prefix = 'tmp_', $mode = 0700, $maxAttempts = 100)
     $attempts = 0;
 
     do {
-        $path = sprintf('%s%s%s%s', $dir, DIRECTORY_SEPARATOR, $prefix, \random_int(100000, mt_getrandmax()));
+        $path = sprintf('%s%s%s%s', $dir, DIRECTORY_SEPARATOR, $prefix, random_int(100000, mt_getrandmax()));
     } while (! mkdir($path, $mode) && $attempts++ < $maxAttempts);
 
     return $path;
@@ -76,8 +76,7 @@ function tmpdir($dir = null, $prefix = 'tmp_', $mode = 0700, $maxAttempts = 100)
  *
  * @return string
  */
-function pm_path(?string $filename = null)
-{
+function pm_path(?string $filename = null) {
     return PM_HOME_PATH . ($filename ? DIRECTORY_SEPARATOR . $filename : '');
 }
 
@@ -86,8 +85,7 @@ function pm_path(?string $filename = null)
  *
  * @return mixed
  */
-function codebase_path(?string $filename = null)
-{
+function codebase_path(?string $filename = null) {
     return Config::codebasePath($filename);
 }
 
@@ -96,8 +94,7 @@ function codebase_path(?string $filename = null)
  *
  * @return mixed
  */
-function packages_path(?string $filename = null)
-{
+function packages_path(?string $filename = null) {
     return Config::packagesPath($filename);
 }
 
@@ -108,8 +105,7 @@ function packages_path(?string $filename = null)
  *
  * @throws \Illuminate\Contracts\Container\BindingResolutionException
  */
-function resolve(string $class)
-{
+function resolve(string $class) {
     return Container::getInstance()->make($class);
 }
 
@@ -118,44 +114,28 @@ function resolve(string $class)
  *
  * @param  mixed  $instance
  */
-function swap(string $class, $instance): void
-{
+function swap(string $class, $instance): void {
     Container::getInstance()->instance($class, $instance);
 }
 
 /**
  * @return mixed
  */
-function user()
-{
+function user() {
     return $_SERVER['SUDO_USER'] ?? $_SERVER['USER'];
-}
-
-/**
- * Verify that the script is currently running as "sudo".
- *
- * @throws \Exception
- */
-function should_be_sudo(): void
-{
-    if (! isset($_SERVER['SUDO_USER'])) {
-        throw new RuntimeException('This command must be run with sudo.');
-    }
 }
 
 /**
  * Output the given text to the console.
  */
-function info(string $output): void
-{
+function info(string $output): void {
     output('<info>'.$output.'</info>');
 }
 
 /**
  * Output the given text to the console.
  */
-function warning(string $output): void
-{
+function warning(string $output): void {
     output('<fg=red>' . $output . '</>');
 }
 
@@ -165,8 +145,7 @@ function warning(string $output): void
  * @param array $headers
  * @param array $rows
  */
-function table(array $headers = [], array $rows = []): void
-{
+function table(array $headers = [], array $rows = []): void {
     $table = new Table(new ConsoleOutput());
     $table->setHeaders($headers)->setRows($rows);
     $table->render();
@@ -175,8 +154,7 @@ function table(array $headers = [], array $rows = []): void
 /**
  * Output the given text to the console.
  */
-function output(string $output): void
-{
+function output(string $output): void {
     if (isset($_ENV['APP_ENV']) && $_ENV['APP_ENV'] === 'testing') {
         return;
     }
