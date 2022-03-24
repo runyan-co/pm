@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+namespace ProcessMaker;
+
 use Illuminate\Container\Container;
 use ProcessMaker\Facades\CommandLine as Cli;
 use ProcessMaker\Facades\Config;
