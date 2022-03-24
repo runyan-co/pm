@@ -7,7 +7,7 @@ namespace ProcessMaker\Cli;
 use ProcessMaker\Facades\Config;
 use ProcessMaker\Facades\Git;
 
-class ContinuousIntegration
+class PackagesCi
 {
     /**
      * @throws \Illuminate\Contracts\Container\BindingResolutionException

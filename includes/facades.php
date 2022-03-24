@@ -33,7 +33,6 @@ abstract class Facade
     }
 }
 
-
 /**
  * @see \ProcessMaker\Cli\CommandLine
  */
@@ -70,9 +69,9 @@ class Composer extends Facade {}
 class Git extends Facade {}
 
 /**
- * @see \ProcessMaker\Cli\ContinuousIntegration
+ * @see \ProcessMaker\Cli\PackagesCi
  */
-class ContinuousIntegration extends Facade {}
+class PackagesCi extends Facade {}
 
 /**
  * @see \ProcessMaker\Cli\Config

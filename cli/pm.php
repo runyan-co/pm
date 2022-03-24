@@ -14,9 +14,7 @@ if (file_exists(__DIR__.'/../vendor/autoload.php')) {
 use Illuminate\Container\Container;
 use Illuminate\Support\Str;
 use ProcessMaker\Facades\Config;
-use ProcessMaker\Cli\ProcessManager;
-use ProcessMaker\Facades\SystemResources;
-use ProcessMaker\Facades\ContinuousIntegration;
+use ProcessMaker\Facades\PackagesCi;
 use ProcessMaker\Facades\Environment;
 use ProcessMaker\Facades\FileSystem;
 use ProcessMaker\Facades\Git;
@@ -72,7 +70,7 @@ $app->command('env-check', function (): void {
  * -------------------------------------------------+
  */
 $app->command('ci:install-packages', function (): void {
-    ContinuousIntegration::install();
+    PackagesCi::install();
 })->descriptions('Intended to use with CircleCi to install necessary enterprise packages for testing');
 
 if (! FileSystem::isDir(PM_HOME_PATH)) {

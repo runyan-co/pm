@@ -24,6 +24,11 @@ class Reset
 
     protected string $branch = '';
 
+    protected static array $artisanInstallCommands = [
+        PHP_BINARY.' artisan passport:install --no-interaction',
+        PHP_BINARY.' artisan storage:link --no-interaction'
+    ];
+
     protected static array $gitCommands = [
         'git checkout {branch}',
     ];
@@ -93,7 +98,10 @@ class Reset
             return str_replace('composer', $composer, $line);
         }, static::$composerCommands)];
 
-        $artisanInstallCommands = ['artisan install' => [$this->buildartisanInstallCommands()]];
+        $artisanInstallCommands = ['artisan install' => array_merge(
+            [$this->buildArtisanInstallCommand()],
+            self::$artisanInstallCommands
+        )];
 
         $npmCommands = ['npm' => static::$npmCommands];
 
@@ -111,7 +119,7 @@ class Reset
      * The ProcessMaker artisan install command with the arguments
      * pre-populated (speeds everything up quite a bit)
      */
-    public function buildArtisanInstallCommands(): string
+    public function buildArtisanInstallCommand(): string
     {
         $redis_driver = extension_loaded('redis')
             ? 'phpredis'
