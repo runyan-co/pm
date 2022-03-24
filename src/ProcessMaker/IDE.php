@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace ProcessMaker\Cli;
+namespace ProcessMaker;
 
 use Illuminate\Support\Str;
 
@@ -14,7 +14,7 @@ class IDE
      *
      * @var array<string>
      */
-    public static array $types = [
+    public static $types = [
         'phpstorm' => '.idea',
         'vscode' => '.vscode',
     ];
@@ -22,9 +22,12 @@ class IDE
     /**
      * The temporary directory name
      */
-    public static string $tmp = 'tmp';
+    public static $tmp = 'tmp';
 
-    protected FileSystem $files;
+    /**
+     * @var \ProcessMaker\FileSystem
+     */
+    protected $files;
 
     /**
      * @return void

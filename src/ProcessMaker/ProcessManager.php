@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace ProcessMaker\Cli;
+namespace ProcessMaker;
 
 use Illuminate\Support\Collection;
 use LogicException;
@@ -15,16 +15,28 @@ class ProcessManager
      */
     public $finalCallback;
 
-    public bool $verbose = false;
-
-    protected Collection $processCollections;
-
-    protected Collection $outputCollection;
-
-    protected CommandLine $cli;
+    /**
+     * @var bool
+     */
+    public $verbose = false;
 
     /**
-     * @param  \ProcessMaker\Cli\CommandLine  $cli
+     * @var \Illuminate\Support\Collection
+     */
+    protected $processCollections;
+
+    /**
+     * @var \Illuminate\Support\Collection
+     */
+    protected $outputCollection;
+
+    /**
+     * @var \ProcessMaker\CommandLine
+     */
+    protected $cli;
+
+    /**
+     * @param  \ProcessMaker\CommandLine  $cli
      * @param  \Illuminate\Support\Collection  $outputCollection
      * @param  \Illuminate\Support\Collection  $processCollections
      */
@@ -50,7 +62,6 @@ class ProcessManager
 
     /**
      * @param  callable  $callback
-     * @param  array  $arguments
      *
      * @return void
      */
@@ -149,14 +160,18 @@ class ProcessManager
      */
     public function buildProcessesBundle(array $commands): Collection
     {
-        $commands = array_filter($commands, static fn ($command) => ! is_string($command));
+        $commands = array_filter($commands, static function ($command) {
+            return ! is_string($command);
+        });
 
         if (blank($commands)) {
             throw new LogicException('Commands array cannot be empty');
         }
 
         $bundles = collect($commands)->transform(function (array $set) {
-            return collect(array_map(static fn ($command) => new Process($command), $set));
+            return collect(array_map(static function ($command) {
+                return new Process($command);
+            }, $set));
         });
 
         return $this->setExitListeners($bundles);
@@ -281,7 +296,9 @@ class ProcessManager
      */
     private function validateBundle(Collection $bundle): Collection
     {
-        return $bundle->reject(fn ($process) => ! $process instanceof Process);
+        return $bundle->reject(function ($process) {
+            return ! $process instanceof Process;
+        });
     }
 
     /**
@@ -292,7 +309,9 @@ class ProcessManager
     private function getStartProcesses(Collection $bundles): Collection
     {
         return $this->validateBundle(
-            $bundles->map(fn (Collection $bundle) => $bundle->first())
+            $bundles->map(function (Collection $bundle) {
+                return $bundle->first();
+            })
         );
     }
 
@@ -304,6 +323,7 @@ class ProcessManager
     private function setProcessIndexes(Collection $bundles): void
     {
         $index = 0;
+
         $total_processes = 0;
 
         // Count up all of the processes

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace ProcessMaker\Cli;
+namespace ProcessMaker;
 
 use Illuminate\Support\Str;
 use LogicException;
@@ -10,13 +10,19 @@ use RuntimeException;
 
 class Git
 {
-    public CommandLine $cli;
-
-    public FileSystem $files;
+    /**
+     * @var \ProcessMaker\CommandLine
+     */
+    public $cli;
 
     /**
-     * @param  \ProcessMaker\Cli\CommandLine  $cli
-     * @param  \ProcessMaker\Cli\FileSystem  $files
+     * @var \ProcessMaker\FileSystem 
+     */
+    public $files;
+
+    /**
+     * @param  \ProcessMaker\CommandLine  $cli
+     * @param  \ProcessMaker\FileSystem  $files
      */
     public function __construct(CommandLine $cli, FileSystem $files)
     {
@@ -31,7 +37,7 @@ class Git
      */
     public function validateGitRepository(string $path): void
     {
-        if (! $this->files->isDir($path)) {
+        if (! $this->files->is_dir($path)) {
             throw new LogicException("Directory to git repository does not exist: ${path}");
         }
 

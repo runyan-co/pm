@@ -13,7 +13,7 @@
         }
     ],
     "require": {
-        "php": ">=7.4",
+        "php": ">=7.2",
         "ext-json": "*",
         "ext-posix": "*",
         "illuminate/support": "^8.73",
@@ -31,11 +31,10 @@
     },
     "autoload": {
         "files": [
-            "includes/facades.php",
-            "includes/helpers.php"
+            "includes/scope.php"
         ],
         "psr-4": {
-            "ProcessMaker\\Cli\\": "cli/ProcessMaker/"
+            "ProcessMaker\\": "src/ProcessMaker/"
         }
     }
 }

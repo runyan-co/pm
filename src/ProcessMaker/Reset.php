@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace ProcessMaker\Cli;
+namespace ProcessMaker;
 
 use DomainException;
 use Illuminate\Support\Str;
@@ -18,33 +18,54 @@ use function array_merge;
 
 class Reset
 {
-    protected CommandLine $cli;
+    /**
+     * @var \ProcessMaker\CommandLine
+     */
+    protected $cli;
 
-    protected FileSystem $files;
+    /**
+     * @var \ProcessMaker\FileSystem
+     */
+    protected $files;
 
-    protected string $branch = '';
+    /**
+     * @var string
+     */
+    protected $branch = '';
 
-    protected static array $artisanInstallCommands = [
+    /**
+     * @var array
+     */
+    protected static $artisanInstallCommands = [
         PHP_BINARY.' artisan passport:install --no-interaction',
         PHP_BINARY.' artisan storage:link --no-interaction'
     ];
 
-    protected static array $gitCommands = [
+    /**
+     * @var array
+     */
+    protected static $gitCommands = [
         'git checkout {branch}',
     ];
 
-    protected static array $composerCommands = [
+    /**
+     * @var array
+     */
+    protected static $composerCommands = [
         'composer install --optimize-autoloader --no-interaction --no-progress',
     ];
 
-    protected static array $npmCommands = [
+    /**
+     * @var array
+     */
+    protected static $npmCommands = [
         'npm install --non-interactive --quiet',
         'npm run dev --non-interactive --quiet',
     ];
 
     /**
-     * @param  \ProcessMaker\Cli\CommandLine  $cli
-     * @param  \ProcessMaker\Cli\FileSystem  $files
+     * @param  \ProcessMaker\CommandLine  $cli
+     * @param  \ProcessMaker\FileSystem  $files
      */
     public function __construct(CommandLine $cli, FileSystem $files)
     {

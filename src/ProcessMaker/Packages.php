@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace ProcessMaker\Cli;
+namespace ProcessMaker;
 
 use DomainException;
 use Exception;
@@ -16,26 +16,37 @@ use RuntimeException;
 
 class Packages
 {
-    public CommandLine $cli;
+    /**
+     * @var \ProcessMaker\CommandLine
+     */
+    public $cli;
 
-    public FileSystem $files;
+    /**
+     * @var \ProcessMaker\FileSystem
+     */
+    public $files;
+
+    /**
+     * Non-bpmn and non-executor packages required for core
+     * processmaker/processmaker functionality
+     *
+     * @var array
+     */
+    public static $otherPackages = ['laravel-i18next'];
 
     /**
      * Packages required by processmaker/processmaker for core BPMN functioning
      *
      * @var array
      */
-    public static array $bpmnPackages = [
-        'pmql',
-        'nayra',
-    ];
+    public static $bpmnPackages = ['pmql', 'nayra'];
 
     /**
      * Complete list of packages for the docker-based script executors
      *
      * @var array
      */
-    public static array $executorPackages = [
+    public static $executorPackages = [
         'docker-executor-csharp',
         'docker-executor-java',
         'docker-executor-lua',
@@ -49,18 +60,8 @@ class Packages
     ];
 
     /**
-     * Non-bpmn and non-executor packages required for core
-     * processmaker/processmaker functionality
-     *
-     * @var array
-     */
-    public static array $otherPackages = [
-        'laravel-i18next',
-    ];
-
-    /**
-     * @param  \ProcessMaker\Cli\CommandLine  $cli
-     * @param  \ProcessMaker\Cli\FileSystem  $files
+     * @param  \ProcessMaker\CommandLine  $cli
+     * @param  \ProcessMaker\FileSystem  $files
      */
     public function __construct(CommandLine $cli, FileSystem $files)
     {
@@ -73,7 +74,7 @@ class Packages
      *
      * @return array
      */
-    public static function additionalPackages()
+    public static function additionalPackages(): array
     {
         return array_merge(self::$bpmnPackages, self::$executorPackages, self::$otherPackages);
     }
@@ -260,7 +261,7 @@ class Packages
             $dir = $package_directory.'/'.$dir;
 
             // Filter out any non-directory files
-            return $this->files->isDir($dir) && ! is_file($dir);
+            return $this->files->is_dir($dir) && ! is_file($dir);
         });
     }
 
@@ -287,8 +288,7 @@ class Packages
      */
     public function getPackageVersion(string $package_directory): string
     {
-        $composer_json = Composer::getComposerJson($package_directory) ?? new class() {
-        };
+        $composer_json = Composer::getComposerJson($package_directory) ?? new class() {};
 
         if (! property_exists($composer_json, 'version')) {
             return '...';
@@ -304,7 +304,7 @@ class Packages
      */
     public function getCurrentGitBranchName(string $path): string
     {
-        if (! $this->files->isDir($path)) {
+        if (! $this->files->is_dir($path)) {
             return '...';
         }
         // Run this command and get the current git branch
@@ -344,7 +344,7 @@ class Packages
     }
 
     /**
-     * @param  string  $branch
+     * @param  string|null  $branch
      * @param  array  $commands
      *
      * @return array
@@ -404,7 +404,7 @@ class Packages
      */
     public function buildPackageInstallCommands(bool $for_41_develop = false, bool $force = false): Collection
     {
-        if (! $this->files->isDir(Config::codebasePath())) {
+        if (! $this->files->is_dir(Config::codebasePath())) {
             throw new LogicException('Could not find ProcessMaker codebase: '.Config::codebasePath());
         }
 
@@ -427,7 +427,9 @@ class Packages
         $composer = $this->cli->findExecutable('composer');
 
         // Build the stack of commands to run
-        return $enterprise_packages->keyBy(fn ($package) => $package)->transform(function (string $package) use ($composer) {
+        return $enterprise_packages->keyBy(function ($package) {
+            return $package;
+        })->transform(function (string $package) use ($composer) {
 
             $artisan_install_command = PHP_BINARY." artisan ${package}:install --no-interaction";
 

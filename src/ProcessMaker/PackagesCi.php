@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace ProcessMaker\Cli;
+namespace ProcessMaker;
 
 use ProcessMaker\Facades\Config;
 use ProcessMaker\Facades\Git;
@@ -11,6 +11,8 @@ class PackagesCi
 {
     /**
      * @throws \Illuminate\Contracts\Container\BindingResolutionException
+     * @throws \Exception
+     * @throws \Exception
      */
     public function install(): void
     {
@@ -31,6 +33,8 @@ class PackagesCi
 
     /**
      * @param  array  $list
+     *
+     * @return string
      */
     private function composerRequireList(array $list): string
     {

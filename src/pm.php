@@ -11,10 +11,12 @@ if (file_exists(__DIR__.'/../vendor/autoload.php')) {
     require getenv('HOME').'/.composer/vendor/autoload.php';
 }
 
+use ProcessMaker\CommandLine;
 use Illuminate\Container\Container;
 use Illuminate\Support\Str;
 use ProcessMaker\Facades\Config;
 use ProcessMaker\Facades\PackagesCi;
+use ProcessMaker\ProcessManager;
 use ProcessMaker\Facades\Environment;
 use ProcessMaker\Facades\FileSystem;
 use ProcessMaker\Facades\Git;
@@ -29,13 +31,13 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Question\ConfirmationQuestion;
 use Symfony\Component\Console\Question\Question;
 
-use function ProcessMaker\Cli\codebase_path;
-use function ProcessMaker\Cli\info;
-use function ProcessMaker\Cli\output;
-use function ProcessMaker\Cli\resolve;
-use function ProcessMaker\Cli\table;
-use function ProcessMaker\Cli\warning;
-use function ProcessMaker\Cli\warningThenExit;
+use function ProcessMaker\codebase_path;
+use function ProcessMaker\info;
+use function ProcessMaker\output;
+use function ProcessMaker\resolve;
+use function ProcessMaker\table;
+use function ProcessMaker\warning;
+use function ProcessMaker\warningThenExit;
 
 Container::setInstance(new Container());
 
@@ -73,7 +75,7 @@ $app->command('ci:install-packages', function (): void {
     PackagesCi::install();
 })->descriptions('Intended to use with CircleCi to install necessary enterprise packages for testing');
 
-if (! FileSystem::isDir(PM_HOME_PATH)) {
+if (!is_dir(PM_HOME_PATH)) {
     /*
      * -------------------------------------------------+
      * |                                                |
@@ -122,7 +124,7 @@ if (! FileSystem::isDir(PM_HOME_PATH)) {
 		$current = 0;
 
 		// Iterate through the defaults to build the config.json contents
-		foreach ($configuration = \ProcessMaker\Cli\Config::$defaults as $config_key => $config) {
+		foreach ($configuration = \ProcessMaker\Config::$defaults as $config_key => $config) {
 
 			// Keep track of where were at for the user's sake
             $current += 1;
@@ -341,7 +343,7 @@ if (! FileSystem::isDir(PM_HOME_PATH)) {
             }
 
             // Grab an instance of the CommandLine class
-            $cli = resolve(\ProcessMaker\Cli\CommandLine::class);
+            $cli = resolve(CommandLine::class);
 
 			// Since we completely remove the codebase directory when resetting,
 	        // we need to make sure the current working directory is different
@@ -542,7 +544,7 @@ if (! FileSystem::isDir(PM_HOME_PATH)) {
             }
 
             // Grab an instance of the CommandLine class
-            $cli = resolve(\ProcessMaker\Cli\CommandLine::class);
+            $cli = resolve(CommandLine::class);
 
             // Count up the total number of steps
             $steps = $install_commands->flatten()->count();
@@ -664,7 +666,7 @@ if (! FileSystem::isDir(PM_HOME_PATH)) {
         $verbose = $input->getOption('verbose');
 
 		// Grab an instance of the Packages class
-		$packages = resolve(\ProcessMaker\Cli\Packages::class);
+		$packages = resolve(\ProcessMaker\Packages::class);
 
         // Build the commands for each package (keyed by package name)
         $commands = $packages->buildPullCommands($for_41_develop ? '4.1-develop' : 'develop');
@@ -673,7 +675,7 @@ if (! FileSystem::isDir(PM_HOME_PATH)) {
 		$metadata = $packages->takePackagesSnapshot();
 
 		// Grab an instance ProcessManager
-        $processManager = resolve(\ProcessMaker\Cli\ProcessManager::class);
+        $processManager = resolve(ProcessManager::class);
 
 		// Set verbosity
 		$processManager->setVerbosity($verbose);

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace ProcessMaker\Cli;
+namespace ProcessMaker;
 
 use Exception;
 use LogicException;
@@ -12,9 +12,15 @@ use ProcessMaker\Facades\Config;
 
 class Composer
 {
-    public CommandLine $cli;
+    /**
+     * @var \ProcessMaker\CommandLine
+     */
+    public $cli;
 
-    public FileSystem $files;
+    /**
+     * @var \ProcessMaker\FileSystem
+     */
+    public $files;
 
     /**
      * @var
@@ -22,8 +28,8 @@ class Composer
     public $config;
 
     /**
-     * @param  \ProcessMaker\Cli\CommandLine  $cli
-     * @param  \ProcessMaker\Cli\FileSystem  $files
+     * @param  \ProcessMaker\CommandLine  $cli
+     * @param  \ProcessMaker\FileSystem  $files
      */
     public function __construct(CommandLine $cli, FileSystem $files)
     {
@@ -36,7 +42,7 @@ class Composer
      */
     public function getComposerJson(string $path_to_composer_json)
     {
-        if (! $this->files->isDir($path_to_composer_json)) {
+        if (! $this->files->is_dir($path_to_composer_json)) {
             throw new LogicException("Path to composer.json not found: ${path_to_composer_json}");
         }
 
