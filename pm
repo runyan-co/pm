@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-SOURCE="${BASH_SOURCE[0]}"
+export SOURCE="${BASH_SOURCE[0]}"
 
 # If the current source is a symbolic link, we need to resolve it to an
 # actual directory name. We'll use PHP to do this easier than we can

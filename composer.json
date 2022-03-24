@@ -31,8 +31,7 @@
     },
     "autoload": {
         "files": [
-            "includes/facades.php",
-            "includes/helpers.php"
+            "includes/scope.php"
         ],
         "psr-4": {
             "ProcessMaker\\": "src/ProcessMaker/"

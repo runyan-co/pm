@@ -2,15 +2,11 @@
 
 declare(strict_types=1);
 
-namespace ProcessMaker;
-
 use Illuminate\Container\Container;
 use ProcessMaker\Facades\CommandLine as Cli;
 use ProcessMaker\Facades\Config;
 use Symfony\Component\Console\Helper\Table;
 use Symfony\Component\Console\Output\ConsoleOutput;
-
-use function random_int;
 
 if (!defined('HOMEBREW_PREFIX')) {
     define('HOMEBREW_PREFIX', Cli::run('printf $(brew --prefix)'));
