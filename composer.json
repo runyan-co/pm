@@ -31,7 +31,7 @@
     },
     "autoload": {
         "files": [
-            "includes/scope.php"
+          "includes/require.php"
         ],
         "psr-4": {
             "ProcessMaker\\Cli\\": "src/ProcessMaker/Cli"

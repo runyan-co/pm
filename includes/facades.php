@@ -64,9 +64,9 @@ class Packages extends Facade {}
 class Install extends Facade {}
 
 /**
- * @see \ProcessMaker\Cli\ProcessManager
+ * @see \ProcessMaker\Cli\ParallelRun
  */
-class ProcessManager extends Facade {}
+class ParallelRun extends Facade {}
 
 /**
  * @see \ProcessMaker\Cli\Composer
