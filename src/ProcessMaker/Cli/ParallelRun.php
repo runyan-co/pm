@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace ProcessMaker;
+namespace ProcessMaker\Cli;
 
 use Illuminate\Support\Collection;
 use LogicException;
 use React\ChildProcess\Process;
 
-class ProcessManager
+class ParallelRun
 {
     /**
      * @var callable
@@ -31,12 +31,12 @@ class ProcessManager
     protected $outputCollection;
 
     /**
-     * @var \ProcessMaker\CommandLine
+     * @var \ProcessMaker\Cli\CommandLine
      */
     protected $cli;
 
     /**
-     * @param  \ProcessMaker\CommandLine  $cli
+     * @param  \ProcessMaker\Cli\CommandLine  $cli
      * @param  \Illuminate\Support\Collection  $outputCollection
      * @param  \Illuminate\Support\Collection  $processCollections
      */

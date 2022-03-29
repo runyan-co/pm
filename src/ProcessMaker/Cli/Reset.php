@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace ProcessMaker;
+namespace ProcessMaker\Cli;
 
 use DomainException;
 use Illuminate\Support\Str;
-use ProcessMaker\Facades\Install;
-use ProcessMaker\Facades\CommandLine as Cli;
-use ProcessMaker\Facades\Config;
+use ProcessMaker\Cli\Facades\Install;
+use ProcessMaker\Cli\Facades\CommandLine as Cli;
+use ProcessMaker\Cli\Facades\Config;
 
 use function extension_loaded;
 use function implode;
@@ -19,12 +19,12 @@ use function array_merge;
 class Reset
 {
     /**
-     * @var \ProcessMaker\CommandLine
+     * @var \ProcessMaker\Cli\CommandLine
      */
     protected $cli;
 
     /**
-     * @var \ProcessMaker\FileSystem
+     * @var \ProcessMaker\Cli\FileSystem
      */
     protected $files;
 
@@ -64,8 +64,8 @@ class Reset
     ];
 
     /**
-     * @param  \ProcessMaker\CommandLine  $cli
-     * @param  \ProcessMaker\FileSystem  $files
+     * @param  \ProcessMaker\Cli\CommandLine  $cli
+     * @param  \ProcessMaker\Cli\FileSystem  $files
      */
     public function __construct(CommandLine $cli, FileSystem $files)
     {
@@ -137,7 +137,7 @@ class Reset
     }
 
     /**
-     * The ProcessMaker artisan install command with the arguments
+     * The ProcessMaker\Cli artisan install command with the arguments
      * pre-populated (speeds everything up quite a bit)
      */
     public function buildArtisanInstallCommand(): string

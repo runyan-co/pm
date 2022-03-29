@@ -2,23 +2,23 @@
 
 declare(strict_types=1);
 
-namespace ProcessMaker;
+namespace ProcessMaker\Cli;
 
 use Exception;
 use LogicException;
 use RuntimeException;
 use Illuminate\Support\Str;
-use ProcessMaker\Facades\Config;
+use ProcessMaker\Cli\Facades\Config;
 
 class Composer
 {
     /**
-     * @var \ProcessMaker\CommandLine
+     * @var \ProcessMaker\Cli\CommandLine
      */
     public $cli;
 
     /**
-     * @var \ProcessMaker\FileSystem
+     * @var \ProcessMaker\Cli\FileSystem
      */
     public $files;
 
@@ -28,8 +28,8 @@ class Composer
     public $config;
 
     /**
-     * @param  \ProcessMaker\CommandLine  $cli
-     * @param  \ProcessMaker\FileSystem  $files
+     * @param  \ProcessMaker\Cli\CommandLine  $cli
+     * @param  \ProcessMaker\Cli\FileSystem  $files
      */
     public function __construct(CommandLine $cli, FileSystem $files)
     {

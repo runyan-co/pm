@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace ProcessMaker;
+namespace ProcessMaker\Cli;
 
 use Illuminate\Support\Str;
 use LogicException;
@@ -11,18 +11,18 @@ use RuntimeException;
 class Git
 {
     /**
-     * @var \ProcessMaker\CommandLine
+     * @var \ProcessMaker\Cli\CommandLine
      */
     public $cli;
 
     /**
-     * @var \ProcessMaker\FileSystem 
+     * @var \ProcessMaker\Cli\FileSystem
      */
     public $files;
 
     /**
-     * @param  \ProcessMaker\CommandLine  $cli
-     * @param  \ProcessMaker\FileSystem  $files
+     * @param  \ProcessMaker\Cli\CommandLine  $cli
+     * @param  \ProcessMaker\Cli\FileSystem  $files
      */
     public function __construct(CommandLine $cli, FileSystem $files)
     {

@@ -2,21 +2,21 @@
 
 declare(strict_types=1);
 
-namespace ProcessMaker;
+namespace ProcessMaker\Cli;
 
-use ProcessMaker\Facades\CommandLine as Cli;
+use ProcessMaker\Cli\Facades\CommandLine as Cli;
 
 class Install
 {
     /**
-     * @var \ProcessMaker\FileSystem
+     * @var \ProcessMaker\Cli\FileSystem
      */
     public $files;
 
     public $bin = HOMEBREW_PREFIX.'/bin/pm';
 
     /**
-     * @param  \ProcessMaker\FileSystem  $files
+     * @param  \ProcessMaker\Cli\FileSystem  $files
      */
     public function __construct(FileSystem $files)
     {

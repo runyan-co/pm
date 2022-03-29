@@ -1,9 +1,9 @@
 <?php
 
 use PHPUnit\Framework\TestCase;
-use ProcessMaker\CommandLine;
+use ProcessMaker\Cli\CommandLine;
 
-use function ProcessMaker\swap;
+use function ProcessMaker\Cli\swap;
 
 class PackagesCiTest extends TestCase
 {

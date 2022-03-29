@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace ProcessMaker\Facades;
+namespace ProcessMaker\Cli\Facades;
 
 use Illuminate\Container\Container;
 
@@ -19,11 +19,9 @@ abstract class Facade
      */
     public static function __callStatic(string $method, array $parameters)
     {
-        Container::getInstance()->singletonIf($key = static::containerKey());
+        Container::getInstance()->singletonIf(static::containerKey());
 
-        $resolvedInstance = Container::getInstance()->make($key);
-
-        return call_user_func_array([$resolvedInstance, $method], $parameters);
+        return call_user_func_array([static::getInstance(), $method], $parameters);
     }
 
     /**
@@ -31,71 +29,81 @@ abstract class Facade
      */
     public static function containerKey(): string
     {
-        return 'ProcessMaker\\'.basename(str_replace('\\', '/', static::class));
+        return 'ProcessMaker\Cli\\'.basename(str_replace('\\', '/', static::class));
+    }
+
+    /**
+     * @return mixed|object
+     *
+     * @throws \Illuminate\Contracts\Container\BindingResolutionException
+     */
+    public static function getInstance()
+    {
+        return Container::getInstance()->make(static::containerKey());
     }
 }
 
 /**
- * @see \ProcessMaker\CommandLine
+ * @see \ProcessMaker\Cli\CommandLine
  */
 class CommandLine extends Facade {}
 
 /**
- * @see \ProcessMaker\FileSystem
+ * @see \ProcessMaker\Cli\FileSystem
  */
 class FileSystem extends Facade {}
 
 /**
- * @see \ProcessMaker\Packages
+ * @see \ProcessMaker\Cli\Packages
  */
 class Packages extends Facade {}
 
 /**
- * @see \ProcessMaker\Install
+ * @see \ProcessMaker\Cli\Install
  */
 class Install extends Facade {}
 
 /**
- * @see \ProcessMaker\ProcessManager
+ * @see \ProcessMaker\Cli\ProcessManager
  */
 class ProcessManager extends Facade {}
 
 /**
- * @see \ProcessMaker\Composer
+ * @see \ProcessMaker\Cli\Composer
  */
 class Composer extends Facade {}
 
 /**
- * @see \ProcessMaker\Git
+ * @see \ProcessMaker\Cli\Git
  */
 class Git extends Facade {}
 
 /**
- * @see \ProcessMaker\PackagesCi
+ * @see \ProcessMaker\Cli\PackagesCi
  */
 class PackagesCi extends Facade {}
 
 /**
- * @see \ProcessMaker\Config
+ * @see \ProcessMaker\Cli\Config
  */
 class Config extends Facade {}
 
 /**
- * @see \ProcessMaker\Supervisor
+ * @see \ProcessMaker\Cli\Supervisor
  */
 class Supervisor extends Facade {}
 
 /**
- * @see \ProcessMaker\Reset
+ * @see \ProcessMaker\Cli\Reset
  */
 class Reset extends Facade {}
 
 /**
- * @see \ProcessMaker\Reset
+ * @see \ProcessMaker\Cli\Reset
  */
 class IDE extends Facade {}
 
 /**
- * @see \ProcessMaker\Reset
+ * @see \ProcessMaker\Cli\Reset
  */
 class Environment extends Facade {}

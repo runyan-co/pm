@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace ProcessMaker;
+namespace ProcessMaker\Cli;
 
-use ProcessMaker\Facades\Config;
-use ProcessMaker\Facades\Git;
+use ProcessMaker\Cli\Facades\Config;
+use ProcessMaker\Cli\Facades\Git;
 
 class PackagesCi
 {

@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace ProcessMaker;
+namespace ProcessMaker\Cli;
 
 use RuntimeException;
-use ProcessMaker\Facades\CommandLine as Cli;
+use ProcessMaker\Cli\Facades\CommandLine as Cli;
 
 class FileSystem
 {
