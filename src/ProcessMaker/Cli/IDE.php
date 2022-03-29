@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace ProcessMaker;
+namespace ProcessMaker\Cli;
 
 use Illuminate\Support\Str;
 
@@ -25,7 +25,7 @@ class IDE
     public static $tmp = 'tmp';
 
     /**
-     * @var \ProcessMaker\FileSystem
+     * @var \ProcessMaker\Cli\FileSystem
      */
     protected $files;
 

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace ProcessMaker;
+namespace ProcessMaker\Cli;
 
 use Illuminate\Support\Str;
 use Symfony\Component\Console\Helper\ProgressBar;

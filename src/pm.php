@@ -11,33 +11,34 @@ if (file_exists(__DIR__.'/../vendor/autoload.php')) {
     require getenv('HOME').'/.composer/vendor/autoload.php';
 }
 
-use ProcessMaker\CommandLine;
+use ProcessMaker\Cli\Application;
 use Illuminate\Container\Container;
 use Illuminate\Support\Str;
-use ProcessMaker\Facades\Config;
-use ProcessMaker\Facades\PackagesCi;
-use ProcessMaker\ProcessManager;
-use ProcessMaker\Facades\Environment;
-use ProcessMaker\Facades\FileSystem;
-use ProcessMaker\Facades\Git;
-use ProcessMaker\Facades\IDE;
-use ProcessMaker\Facades\Install;
-use ProcessMaker\Facades\Packages;
-use ProcessMaker\Facades\Reset;
-use ProcessMaker\Facades\Supervisor;
-use Silly\Application;
+use ProcessMaker\Cli\CommandLine;
+use ProcessMaker\Cli\Facades\Config;
+use ProcessMaker\Cli\Facades\PackagesCi;
+use ProcessMaker\Cli\ProcessManager;
+use ProcessMaker\Cli\Facades\Environment;
+use ProcessMaker\Cli\Facades\FileSystem;
+use ProcessMaker\Cli\Facades\Git;
+use ProcessMaker\Cli\Facades\IDE;
+use ProcessMaker\Cli\Facades\Install;
+use ProcessMaker\Cli\Facades\Packages;
+use ProcessMaker\Cli\Facades\Reset;
+use ProcessMaker\Cli\Facades\Supervisor;
+
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Question\ConfirmationQuestion;
 use Symfony\Component\Console\Question\Question;
 
-use function ProcessMaker\codebase_path;
-use function ProcessMaker\info;
-use function ProcessMaker\output;
-use function ProcessMaker\resolve;
-use function ProcessMaker\table;
-use function ProcessMaker\warning;
-use function ProcessMaker\warningThenExit;
+use function ProcessMaker\Cli\codebase_path;
+use function ProcessMaker\Cli\info;
+use function ProcessMaker\Cli\output;
+use function ProcessMaker\Cli\resolve;
+use function ProcessMaker\Cli\table;
+use function ProcessMaker\Cli\warning;
+use function ProcessMaker\Cli\warning_then_exit;
 
 Container::setInstance(new Container());
 
@@ -124,7 +125,7 @@ if (!is_dir(PM_HOME_PATH)) {
 		$current = 0;
 
 		// Iterate through the defaults to build the config.json contents
-		foreach ($configuration = \ProcessMaker\Config::$defaults as $config_key => $config) {
+		foreach ($configuration = \ProcessMaker\Cli\Config::$defaults as $config_key => $config) {
 
 			// Keep track of where were at for the user's sake
             $current += 1;
@@ -339,7 +340,7 @@ if (!is_dir(PM_HOME_PATH)) {
             $question = new ConfirmationQuestion('<comment>Warning:</comment> This will remove all changes to the core codebase and reset the database. Continue? <info>(yes/no)</info> ', false);
 
             if (!$no_confirmation && $helper->ask($input, $output, $question) === false) {
-                warningThenExit('Reset aborted.');
+                warning_then_exit('Reset aborted.');
             }
 
             // Grab an instance of the CommandLine class
@@ -348,7 +349,7 @@ if (!is_dir(PM_HOME_PATH)) {
 			// Since we completely remove the codebase directory when resetting,
 	        // we need to make sure the current working directory is different
 			if (getcwd() === codebase_path()) {
-				warningThenExit('This command cannot be executed directly in the codebase directly. Please change to the another directory and try again.');
+				warning_then_exit('This command cannot be executed directly in the codebase directly. Please change to the another directory and try again.');
 			}
 
             // Put together the commands necessary
@@ -535,7 +536,7 @@ if (!is_dir(PM_HOME_PATH)) {
 
                 // Bail out if they user doesn't want to force the install
                 if ($helper->ask($input, $output, $question) === false) {
-                    warningThenExit('Packages install aborted.');
+                    warning_then_exit('Packages install aborted.');
                 }
 
                 // Re-run the install but add the force argument to
@@ -635,7 +636,7 @@ if (!is_dir(PM_HOME_PATH)) {
             // Output and we're done!
             output(PHP_EOL."<info>Finished in</info> ${timing}");
         }
-    )->descriptions('Installs all enterprise packages in the local ProcessMaker core (processmaker/processmaker) codebase.', [
+    )->descriptions('Installs all enterprise packages in the local ProcessMaker\Cli core (processmaker/processmaker) codebase.', [
             '--for_41_develop' => 'Uses 4.1 version of the supported packages',
         ]);
 
@@ -666,7 +667,7 @@ if (!is_dir(PM_HOME_PATH)) {
         $verbose = $input->getOption('verbose');
 
 		// Grab an instance of the Packages class
-		$packages = resolve(\ProcessMaker\Packages::class);
+		$packages = resolve(\ProcessMaker\Cli\Packages::class);
 
         // Build the commands for each package (keyed by package name)
         $commands = $packages->buildPullCommands($for_41_develop ? '4.1-develop' : 'develop');
@@ -743,7 +744,7 @@ if (!is_dir(PM_HOME_PATH)) {
 		});
 
     })->descriptions(
-        'Resets and updates the locally stored ProcessMaker 4 composer packages to the latest from GitHub.',
+        'Resets and updates the locally stored ProcessMaker\Cli 4 composer packages to the latest from GitHub.',
         ['--for_41_develop' => 'Change each package to the correct version for the 4.1 version of processmaker/processmaker']
     );
 
@@ -756,7 +757,7 @@ if (!is_dir(PM_HOME_PATH)) {
      */
     $app->command('packages:clone-all [-f|--force]', function ($force = null): void {
         Packages::cloneAllPackages($force ?? false);
-    })->descriptions('Clone all supported ProcessMaker 4 packages to a local directory', [
+    })->descriptions('Clone all supported ProcessMaker\Cli 4 packages to a local directory', [
         '--force' => 'Delete the package locally if it exists already',
     ]);
 }

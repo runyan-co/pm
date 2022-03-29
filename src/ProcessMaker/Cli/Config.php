@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace ProcessMaker;
+namespace ProcessMaker\Cli;
 
-use ProcessMaker\Facades\Install;
+use ProcessMaker\Cli\Facades\Install;
 
 class Config
 {

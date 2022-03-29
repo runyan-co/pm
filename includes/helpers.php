@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace ProcessMaker;
+namespace ProcessMaker\Cli;
 
 use Illuminate\Container\Container;
-use ProcessMaker\Facades\CommandLine as Cli;
-use ProcessMaker\Facades\Config;
+use ProcessMaker\Cli\Facades\CommandLine as Cli;
+use ProcessMaker\Cli\Facades\Config;
 use Symfony\Component\Console\Helper\Table;
 use Symfony\Component\Console\Output\ConsoleOutput;
 
@@ -28,7 +28,7 @@ if (!defined('USER_HOME')) {
  *
  * @return string
  */
-function warningThenExit(string $output, int $exitCode = 0): string {
+function warning_then_exit(string $output, int $exitCode = 0): string {
     return warning($output) . exit($exitCode);
 }
 
@@ -85,15 +85,6 @@ function pm_path(?string $filename = null) {
  */
 function codebase_path(?string $filename = null) {
     return Config::codebasePath($filename);
-}
-
-/**
- * @param  string|null  $filename
- *
- * @return mixed
- */
-function packages_path(?string $filename = null) {
-    return Config::packagesPath($filename);
 }
 
 /**

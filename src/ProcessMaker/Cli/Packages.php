@@ -2,27 +2,27 @@
 
 declare(strict_types=1);
 
-namespace ProcessMaker;
+namespace ProcessMaker\Cli;
 
 use DomainException;
 use Exception;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use LogicException;
-use ProcessMaker\Facades\Composer;
-use ProcessMaker\Facades\Config;
-use ProcessMaker\Facades\Git;
+use ProcessMaker\Cli\Facades\Composer;
+use ProcessMaker\Cli\Facades\Config;
+use ProcessMaker\Cli\Facades\Git;
 use RuntimeException;
 
 class Packages
 {
     /**
-     * @var \ProcessMaker\CommandLine
+     * @var \ProcessMaker\Cli\CommandLine
      */
     public $cli;
 
     /**
-     * @var \ProcessMaker\FileSystem
+     * @var \ProcessMaker\Cli\FileSystem
      */
     public $files;
 
@@ -60,8 +60,8 @@ class Packages
     ];
 
     /**
-     * @param  \ProcessMaker\CommandLine  $cli
-     * @param  \ProcessMaker\FileSystem  $files
+     * @param  \ProcessMaker\Cli\CommandLine  $cli
+     * @param  \ProcessMaker\Cli\FileSystem  $files
      */
     public function __construct(CommandLine $cli, FileSystem $files)
     {
@@ -119,7 +119,7 @@ class Packages
 
         // We need the packages meta-package to get the
         // list of supported enterprise packages that
-        // ProcessMaker 4 is compatible with
+        // ProcessMaker\Cli 4 is compatible with
         $packages_package = $this->getPackage('packages');
         $packages_package_path = $packages_package['path'];
 
@@ -204,7 +204,7 @@ class Packages
      */
     public function cloneAllPackages(bool $force = false): void
     {
-        // Clear the ProcessMaker packages directory before
+        // Clear the ProcessMaker\Cli packages directory before
         // we start cloning the new ones down
         if ($force) {
             foreach ($this->getPackages() as $package) {
@@ -400,12 +400,12 @@ class Packages
 
     /**
      * Build the stack of commands to composer require and
-     * install each enterprise ProcessMaker 4 package
+     * install each enterprise ProcessMaker\Cli 4 package
      */
     public function buildPackageInstallCommands(bool $for_41_develop = false, bool $force = false): Collection
     {
         if (! $this->files->is_dir(Config::codebasePath())) {
-            throw new LogicException('Could not find ProcessMaker codebase: '.Config::codebasePath());
+            throw new LogicException('Could not find ProcessMaker\Cli codebase: '.Config::codebasePath());
         }
 
         // Find out which branch to switch to in the local

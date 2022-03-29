@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace ProcessMaker;
+namespace ProcessMaker\Cli;
 
 use RuntimeException;
 use Illuminate\Support\Str;
@@ -10,12 +10,12 @@ use Illuminate\Support\Str;
 class Supervisor
 {
     /**
-     * @var \ProcessMaker\CommandLine
+     * @var \ProcessMaker\Cli\CommandLine
      */
     protected $cli;
 
     /**
-     * @param  \ProcessMaker\CommandLine  $cli
+     * @param  \ProcessMaker\Cli\CommandLine  $cli
      */
     public function __construct(CommandLine $cli)
     {
