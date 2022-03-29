@@ -19,7 +19,7 @@ if (!defined('PM_HOME_PATH')) {
 }
 
 if (!defined('USER_HOME')) {
-    define('USER_HOME', getenv('HOME'));
+    define('USER_HOME', ($home = getenv('HOME')) ? $home : null ?? Cli::run('printf $(cd ~ && pwd)'));
 }
 
 /**

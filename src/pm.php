@@ -11,13 +11,13 @@ if (file_exists(__DIR__.'/../vendor/autoload.php')) {
     require getenv('HOME').'/.composer/vendor/autoload.php';
 }
 
-use ProcessMaker\Cli\Application;
 use Illuminate\Container\Container;
 use Illuminate\Support\Str;
-use ProcessMaker\Cli\CommandLine;
+use ProcessMaker\Cli\Application;
+use ProcessMaker\Cli\Facades\ParallelRun;
+use ProcessMaker\Cli\Facades\CommandLine;
 use ProcessMaker\Cli\Facades\Config;
 use ProcessMaker\Cli\Facades\PackagesCi;
-use ProcessMaker\Cli\ProcessManager;
 use ProcessMaker\Cli\Facades\Environment;
 use ProcessMaker\Cli\Facades\FileSystem;
 use ProcessMaker\Cli\Facades\Git;
@@ -35,7 +35,6 @@ use Symfony\Component\Console\Question\Question;
 use function ProcessMaker\Cli\codebase_path;
 use function ProcessMaker\Cli\info;
 use function ProcessMaker\Cli\output;
-use function ProcessMaker\Cli\resolve;
 use function ProcessMaker\Cli\table;
 use function ProcessMaker\Cli\warning;
 use function ProcessMaker\Cli\warning_then_exit;
@@ -56,7 +55,7 @@ $app->command('env-check', function (): void {
 
     foreach (Environment::environmentChecks() as $result) {
 		if ($result instanceof RuntimeException) {
-            $success = output("<fg=red>Environment check failed with message:</> {$result->getMessage()}");
+            $success = output("<fg=red>Environment check failed with message:</> {$result->getMessage()}") ?? false;
 		}
     }
 
@@ -74,7 +73,7 @@ $app->command('env-check', function (): void {
  */
 $app->command('ci:install-packages', function (): void {
     PackagesCi::install();
-})->descriptions('Intended to use with CircleCi to install necessary enterprise packages for testing');
+})->descriptions('Intended to use with CircleCi to install necessary enterprise packages for testing.');
 
 if (!is_dir(PM_HOME_PATH)) {
     /*
@@ -344,7 +343,7 @@ if (!is_dir(PM_HOME_PATH)) {
             }
 
             // Grab an instance of the CommandLine class
-            $cli = resolve(CommandLine::class);
+            $cli = CommandLine::getInstance();
 
 			// Since we completely remove the codebase directory when resetting,
 	        // we need to make sure the current working directory is different
@@ -485,7 +484,7 @@ if (!is_dir(PM_HOME_PATH)) {
             $cli->getProgress()->clear();
 
             // See how long it took to run everything
-            $timing = $cli->timing();
+            $timing = $cli->getTimeElapsed();
 
             // Output and we're done!
             output(PHP_EOL."<info>Finished in</info> ${timing}");
@@ -545,7 +544,7 @@ if (!is_dir(PM_HOME_PATH)) {
             }
 
             // Grab an instance of the CommandLine class
-            $cli = resolve(CommandLine::class);
+            $cli = CommandLine::getInstance();
 
             // Count up the total number of steps
             $steps = $install_commands->flatten()->count();
@@ -575,13 +574,13 @@ if (!is_dir(PM_HOME_PATH)) {
             // Iterate through the collection of commands
             foreach ($install_commands as $package => $command_collection) {
 
-            // Iterate through each command and attempt to run it
+                // Iterate through each command and attempt to run it
                 foreach ($command_collection as $command) {
 
                 // todo Clean this up as checking for the type of command like this is not ideal
                     $message = $package === 'horizon'
-                    ? 'Restarting horizon...'
-                    : "Installing ${package}...";
+	                    ? 'Restarting horizon...'
+	                    : "Installing ${package}...";
 
                     // Update the progress bar
                     $cli->getProgress()->setMessage($message);
@@ -590,7 +589,7 @@ if (!is_dir(PM_HOME_PATH)) {
                     try {
                         $command_output = $cli->run($command, static function ($exitCode, $out): void {
                             throw new RuntimeException($out);
-                        }, Config::codebasePath());
+                        }, codebase_path());
                     } catch (RuntimeException $exception) {
                         $cli->getProgress()->clear();
 
@@ -631,10 +630,11 @@ if (!is_dir(PM_HOME_PATH)) {
             $cli->getProgress()->clear();
 
             // See how long it took to run everything
-            $timing = $cli->timing();
+            $timing = $cli->getTimeElapsed();
 
             // Output and we're done!
             output(PHP_EOL."<info>Finished in</info> ${timing}");
+
         }
     )->descriptions('Installs all enterprise packages in the local ProcessMaker\Cli core (processmaker/processmaker) codebase.', [
             '--for_41_develop' => 'Uses 4.1 version of the supported packages',
@@ -648,7 +648,9 @@ if (!is_dir(PM_HOME_PATH)) {
      * -------------------------------------------------+
      */
     $app->command('packages:status', function (): void {
+
         table(['Name', 'Version', 'Branch', 'Commit Hash'], Packages::getPackagesTableData());
+
     })->descriptions('Display the current version, branch, and names of known local packages');
 
     /*
@@ -667,7 +669,7 @@ if (!is_dir(PM_HOME_PATH)) {
         $verbose = $input->getOption('verbose');
 
 		// Grab an instance of the Packages class
-		$packages = resolve(\ProcessMaker\Cli\Packages::class);
+		$packages = Packages::getInstance();
 
         // Build the commands for each package (keyed by package name)
         $commands = $packages->buildPullCommands($for_41_develop ? '4.1-develop' : 'develop');
@@ -675,15 +677,15 @@ if (!is_dir(PM_HOME_PATH)) {
         // Store the pre-pull metadata for each package
 		$metadata = $packages->takePackagesSnapshot();
 
-		// Grab an instance ProcessManager
-        $processManager = resolve(ProcessManager::class);
+		// Grab an instance ParallelRun
+        $parallelRun = ParallelRun::getInstance();
 
 		// Set verbosity
-		$processManager->setVerbosity($verbose);
+		$parallelRun->setVerbosity($verbose);
 
         // Set a closure to be called when the final process
         // exits, then build the process queue and run
-		$processManager->start($commands, function () use ($metadata, $packages) {
+		$parallelRun->start($commands, function () use ($metadata, $packages) {
 
 			// Package metadata to fill a cli table to
 			// inform the user how the pull went
@@ -762,4 +764,4 @@ if (!is_dir(PM_HOME_PATH)) {
     ]);
 }
 
-$app->run();
+return $app->run();

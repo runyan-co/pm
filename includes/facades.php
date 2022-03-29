@@ -8,8 +8,6 @@ use Illuminate\Container\Container;
 
 abstract class Facade
 {
-    protected static $resolvedInstance;
-
     /**
      * Call a non-static method on the facade.
      *
@@ -21,7 +19,9 @@ abstract class Facade
      */
     public static function __callStatic(string $method, array $parameters)
     {
-        return call_user_func_array([self::getInstance(), $method], $parameters);
+        Container::getInstance()->singletonIf(static::containerKey());
+
+        return call_user_func_array([static::getInstance(), $method], $parameters);
     }
 
     /**
@@ -39,13 +39,7 @@ abstract class Facade
      */
     public static function getInstance()
     {
-        if (!self::$resolvedInstance instanceof self) {
-            Container::getInstance()->singletonIf($key = static::containerKey());
-
-            self::$resolvedInstance = Container::getInstance()->make($key);
-        }
-
-        return self::$resolvedInstance;
+        return Container::getInstance()->make(static::containerKey());
     }
 }
 

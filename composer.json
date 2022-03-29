@@ -34,7 +34,7 @@
             "includes/scope.php"
         ],
         "psr-4": {
-            "ProcessMaker\\": "src/ProcessMaker/"
+            "ProcessMaker\\Cli\\": "src/ProcessMaker/Cli"
         }
     }
 }

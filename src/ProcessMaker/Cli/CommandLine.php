@@ -19,28 +19,34 @@ class CommandLine
     /**
      * @var float
      */
-    private $time;
+    private $microtimeStart;
 
     public function __construct()
     {
-        $this->time = microtime(true);
+        $this->microtimeStart = microtime(true);
     }
 
     /**
-     * Returns absolute path of an executable by name
+     * Get the difference of microtime elapsed between the provided
+     * $microtime and the current microtime, converted to
+     * seconds as a two-point floating point decimal
+     *
+     * @param  float|null  $microtime
+     *
+     * @return float
      */
-    public function findExecutable(string $executable_name): string
+    public function getSecondsElapsed(float $microtime = null): float
     {
-        return Str::replace([PHP_EOL, "\n"], '', $this->run("which {$executable_name}"));
+        return round(abs($microtime ?? $this->microtimeStart - microtime(true)), 2);
     }
 
     /**
      * Returns the timing (in seconds) since the
      * CommandLine class was instantiated
      */
-    public function timing(): string
+    public function getTimeElapsed(): string
     {
-        $seconds = round(abs($this->time - microtime(true)), 2);
+        $seconds = $this->getSecondsElapsed();
         $minutes = round($seconds / 60, 2);
         $hours = round($minutes / 60, 2);
 
@@ -61,6 +67,14 @@ class CommandLine
         }
 
         return "${seconds}s";
+    }
+
+    /**
+     * Returns absolute path of an executable by name
+     */
+    public function findExecutable(string $executable_name): string
+    {
+        return Str::replace([PHP_EOL, "\n"], '', $this->run("which {$executable_name}"));
     }
 
     /**

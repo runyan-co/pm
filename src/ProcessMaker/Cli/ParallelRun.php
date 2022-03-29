@@ -8,7 +8,7 @@ use Illuminate\Support\Collection;
 use LogicException;
 use React\ChildProcess\Process;
 
-class ProcessManager
+class ParallelRun
 {
     /**
      * @var callable
