@@ -193,7 +193,7 @@ class Reset
         $command = "mysql -u ${mysql_user}";
 
         if ($mysql_password) {
-            $command .= " -p ${mysql_password}";
+            $command = "${command} -p${mysql_password}";
         }
 
         return "$command <<EOFMYSQL
