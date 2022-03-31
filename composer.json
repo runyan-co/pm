@@ -5,7 +5,7 @@
     "license": "MIT",
     "homepage": "https://github.com/runyan-co/pm",
     "bin": ["pm"],
-    "version": "1.1.0",
+    "version": "1.1.2",
     "authors": [
         {
             "name": "Alex Runyan",
@@ -22,12 +22,14 @@
         "react/child-process": "^0.6.4",
         "symfony/process": "^5.3",
         "symfony/console": "^5.3",
-        "mockery/mockery": "^1.4",
-        "phpunit/phpunit": "^9.5"
+        "mockery/mockery": "^1.4"
     },
     "require-dev": {
         "beyondcode/laravel-dump-server": "^1.7",
         "nunomaduro/phpinsights": "^2.1"
+    },
+    "suggest": {
+        "phpunit/phpunit": "^9.5"
     },
     "autoload": {
         "files": [

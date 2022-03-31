@@ -87,13 +87,16 @@ class Reset
         $this->branch = $branch;
 
         $gitCommands = ['git' => array_map(static function ($command) use ($branch) {
-            return Str::replace('{branch}', $branch, $command);
-        }, static::$gitCommands),
+                return Str::replace('{branch}', $branch, $command);
+            }, static::$gitCommands),
         ];
 
         $databaseCommands = $bounce_database
-            ? ['database' => [$this->buildDropAndCreateSqlCommand()]]
-            : [];
+            ? ['database' => [$this->buildDropAndCreateSqlCommand(
+                Install::get('database_name'),
+                Install::get('database_user'),
+                Install::get('database_password')
+            )]] : [];
 
         $dockerExecutable = Cli::findExecutable('docker');
 
@@ -178,18 +181,26 @@ class Reset
     /**
      * @param  string  $db_name
      * @param  string  $mysql_user
+     * @param  string|null  $mysql_password
      *
      * @return string
      */
     public function buildDropAndCreateSqlCommand(
         string $db_name = 'processmaker',
-        string $mysql_user = 'root'): string
+        string $mysql_user = 'root',
+        string $mysql_password = null): string
     {
-        return "mysql -u ${mysql_user} <<EOFMYSQL
+        $command = "mysql -u ${mysql_user}";
+
+        if ($mysql_password) {
+            $command .= " -p ${mysql_password}";
+        }
+
+        return "$command <<EOFMYSQL
 DROP DATABASE ${db_name};
 EOFMYSQL
 
-        mysql -u ${mysql_user} <<EOFMYSQL
+        $command <<EOFMYSQL
 CREATE DATABASE ${db_name};
 EOFMYSQL";
     }
