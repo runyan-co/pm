@@ -11,7 +11,6 @@ if (file_exists(__DIR__.'/../vendor/autoload.php')) {
     require getenv('HOME').'/.composer/vendor/autoload.php';
 }
 
-use ProcessMaker\Cli\Facades\Logs;
 use Illuminate\Container\Container;
 use Illuminate\Support\Str;
 use ProcessMaker\Cli\Application;
@@ -22,6 +21,7 @@ use ProcessMaker\Cli\Facades\PackagesCi;
 use ProcessMaker\Cli\Facades\Environment;
 use ProcessMaker\Cli\Facades\FileSystem;
 use ProcessMaker\Cli\Facades\Git;
+use ProcessMaker\Cli\Facades\Logs;
 use ProcessMaker\Cli\Facades\IDE;
 use ProcessMaker\Cli\Facades\Install;
 use ProcessMaker\Cli\Facades\Packages;
@@ -662,7 +662,7 @@ if (!is_dir(PM_HOME_PATH)) {
             output(PHP_EOL."<info>Finished in</info> ${timing}");
 
         }
-    )->descriptions('Installs all enterprise packages in the local ProcessMaker\Cli core (processmaker/processmaker) codebase.', [
+    )->descriptions('Installs all enterprise packages in the local ProcessMaker core (processmaker/processmaker) codebase.', [
             '--for_41_develop' => 'Uses 4.1 version of the supported packages',
         ]);
 
@@ -772,7 +772,7 @@ if (!is_dir(PM_HOME_PATH)) {
 		});
 
     })->descriptions(
-        'Resets and updates the locally stored ProcessMaker\Cli 4 composer packages to the latest from GitHub.',
+        'Resets and updates the locally stored ProcessMaker 4 composer packages to the latest from GitHub.',
         ['--for_41_develop' => 'Change each package to the correct version for the 4.1 version of processmaker/processmaker']
     );
 
@@ -785,7 +785,7 @@ if (!is_dir(PM_HOME_PATH)) {
      */
     $app->command('packages:clone-all [-f|--force]', function ($force = null): void {
         Packages::cloneAllPackages($force ?? false);
-    })->descriptions('Clone all supported ProcessMaker\Cli 4 packages to a local directory', [
+    })->descriptions('Clone all supported ProcessMaker 4 packages to a local directory', [
         '--force' => 'Delete the package locally if it exists already',
     ]);
 }

@@ -33,7 +33,8 @@
     },
     "autoload": {
         "files": [
-          "includes/require.php"
+            "includes/compatability.php",
+            "includes/require.php"
         ],
         "psr-4": {
             "ProcessMaker\\Cli\\": "src/ProcessMaker/Cli"
