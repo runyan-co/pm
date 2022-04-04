@@ -11,6 +11,7 @@ if (file_exists(__DIR__.'/../vendor/autoload.php')) {
     require getenv('HOME').'/.composer/vendor/autoload.php';
 }
 
+use ProcessMaker\Cli\Facades\Logs;
 use Illuminate\Container\Container;
 use Illuminate\Support\Str;
 use ProcessMaker\Cli\Application;
@@ -29,6 +30,7 @@ use ProcessMaker\Cli\Facades\Supervisor;
 
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Console\Question\ChoiceQuestion;
 use Symfony\Component\Console\Question\ConfirmationQuestion;
 use Symfony\Component\Console\Question\Question;
 
@@ -207,6 +209,30 @@ if (!is_dir(PM_HOME_PATH)) {
 
     })->descriptions('Runs the installation process for this tool. Necessary before other commands will appear.');
 } else {
+
+    /*
+	 * -------------------------------------------------+
+	 * |                                                |
+	 * |    Command: logs:tail                          |
+	 * |                                                |
+	 * -------------------------------------------------+
+	 */
+    $app->command('logs:tail', function (InputInterface $input, OutputInterface $output) {
+
+        $helper = $this->getHelperSet()->get('question');
+
+        $question = new ChoiceQuestion('<comment>Please select the log file to view:</comment>',
+            Logs::getApplicationLogs()
+        );
+
+        $selected_log_file = $helper->ask($input, $output, $question);
+        $selected_log_file = codebase_path("storage/logs/{$selected_log_file}");
+
+		output(PHP_EOL.'<comment>Type Ctrl+C to exit...</comment>'.PHP_EOL);
+
+        CommandLine::passthru("tail -f -n 20 {$selected_log_file}");
+
+    })->descriptions('Displays live feed of selected application log file');
 
     /*
      * -------------------------------------------------+

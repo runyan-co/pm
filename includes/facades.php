@@ -99,11 +99,16 @@ class Supervisor extends Facade {}
 class Reset extends Facade {}
 
 /**
- * @see \ProcessMaker\Cli\Reset
+ * @see \ProcessMaker\Cli\IDE
  */
 class IDE extends Facade {}
 
 /**
- * @see \ProcessMaker\Cli\Reset
+ * @see \ProcessMaker\Cli\Environment
  */
 class Environment extends Facade {}
+
+/**
+ * @see \ProcessMaker\Cli\Logs
+ */
+class Logs extends Facade {}
