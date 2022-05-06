@@ -88,6 +88,15 @@ function codebase_path(?string $filename = null) {
 }
 
 /**
+ * @param  string|null  $package_name
+ *
+ * @return mixed
+ */
+function packages_path(?string $package_name = null) {
+    return Config::packagesPath($package_name);
+}
+
+/**
  * Resolve the given class from the container.
  *
  * @return mixed

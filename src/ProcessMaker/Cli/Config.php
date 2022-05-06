@@ -99,7 +99,7 @@ class Config
     /**
      * @return array|false|mixed|string
      */
-    public function packagesPath()
+    public function packagesPath(?string $file_name = null)
     {
         $path = getenv('PACKAGES_PATH');
 
@@ -107,7 +107,7 @@ class Config
             $path = Install::read('packages_path');
         }
 
-        return $path;
+        return $file_name ? "${path}/${file_name}" : $path;
     }
 
     /**

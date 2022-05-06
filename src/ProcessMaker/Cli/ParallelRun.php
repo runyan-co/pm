@@ -102,7 +102,7 @@ class ParallelRun
      */
     public function findProcessExitCode(string $key): int
     {
-        if (! $output = $this->getProcessOutput($key)) {
+        if (!$output = $this->getProcessOutput($key)) {
             return 1;
         }
 

@@ -88,7 +88,7 @@ class Packages
             $name = Str::replace('processmaker/', '', $name);
         }
 
-        if (! array_key_exists($name, $this->getPackages())) {
+        if (!array_key_exists($name, $this->getPackages())) {
             throw new LogicException("Package with name \"${name}\" does not exist locally.");
         }
 
@@ -113,7 +113,7 @@ class Packages
      */
     public function getSupportedPackages(bool $enterpriseOnly = false, ?string $branch = null): array
     {
-        if (! $this->packageExists('packages')) {
+        if (!$this->packageExists('packages')) {
             $this->clonePackage('packages');
         }
 
@@ -253,7 +253,7 @@ class Packages
     public function getPackagesListFromDirectory(?string $package_directory = null): array
     {
         if (! is_string($package_directory)) {
-            $package_directory = Config::packagesPath();
+            $package_directory = packages_path();
         }
 
         return array_filter($this->files->scandir($package_directory), function ($dir) use ($package_directory) {
@@ -276,7 +276,7 @@ class Packages
         $packages = array_map(static function ($package_name) {
             return [
                 'name' => $package_name,
-                'path' => Config::packagesPath()."/${package_name}",
+                'path' => packages_path("/${package_name}"),
             ];
         }, $this->getPackagesListFromDirectory());
 
@@ -404,8 +404,8 @@ class Packages
      */
     public function buildPackageInstallCommands(bool $for_41_develop = false, bool $force = false): Collection
     {
-        if (! $this->files->is_dir(Config::codebasePath())) {
-            throw new LogicException('Could not find ProcessMaker\Cli codebase: '.Config::codebasePath());
+        if (! $this->files->is_dir(codebase_path())) {
+            throw new LogicException('Could not find processmaker codebase: '.codebase_path());
         }
 
         // Find out which branch to switch to in the local
@@ -413,7 +413,7 @@ class Packages
         $branch = $for_41_develop ? '4.1-develop' : 'develop';
 
         // Find out which branch we're on
-        $current_branch = Git::getCurrentBranchName(Config::codebasePath());
+        $current_branch = Git::getCurrentBranchName(codebase_path());
 
         // Make sure we're on the right branch
         if ($current_branch !== $branch && ! $force) {
@@ -421,7 +421,9 @@ class Packages
         }
 
         // Grab the list of supported enterprise packages
-        $enterprise_packages = new Collection($this->getSupportedPackages(true, $branch));
+        $enterprise_packages = Collection::make(
+            $this->getSupportedPackages(true, $branch)
+        );
 
         // Find the composer executable
         $composer = $this->cli->findExecutable('composer');
@@ -442,7 +444,7 @@ class Packages
                 $artisan_install_command = "export GOOGLE_API_TOKEN={$key} && ".$artisan_install_command;
             }
 
-            return new Collection([
+            return Collection::make([
                 "{$composer} require processmaker/{$package} --no-interaction",
                 $artisan_install_command,
                 PHP_BINARY." artisan vendor:publish --tag={$package} --no-interaction",
