@@ -431,7 +431,7 @@ if (!is_dir(PM_HOME_PATH)) {
 				// Make sure we re-add the IDE settings
 	            // in case of a premature shutdown
 				register_shutdown_function(static function () use ($ide_config) {
-					if (FileSystem::exists($ide_config)) {
+					if (is_string($ide_config) && FileSystem::exists($ide_config)) {
                         IDE::moveConfigurationBack($ide_config);
 					}
 				});
