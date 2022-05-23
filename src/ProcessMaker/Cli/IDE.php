@@ -38,10 +38,13 @@ class IDE
     }
 
     /**
-     * Check if a given path contains a project-specific IDE configuration file. If a
-     * path is not passed as an argument, it will check in the local core codebase.
+     * Check if a given path contains a project-specific IDE
+     * configuration file. If a path is not passed as an
+     * argument, it will check in the local core codebase.
      *
-     * @return string|void
+     * @param  string|null  $path
+     *
+     * @return void|string
      */
     public function hasConfiguration(?string $path = null)
     {
@@ -89,7 +92,7 @@ class IDE
 
         // Check for config files, if one exists then $path will
         // become the absolute path to the config file
-        if (! ($path = $this->hasConfiguration($path))) {
+        if (!is_string($path = $this->hasConfiguration($path))) {
             return;
         }
 
