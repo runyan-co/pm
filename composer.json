@@ -16,17 +16,17 @@
         "php": ">=7.2",
         "ext-json": "*",
         "ext-posix": "*",
-        "illuminate/support": "^8.73",
-        "illuminate/container": "^8.73",
+        "illuminate/support": "^8.83",
+        "illuminate/container": "^8.83",
         "mnapoli/silly": "^1.7",
         "react/child-process": "^0.6.4",
-        "symfony/process": "^5.3",
-        "symfony/console": "^5.3",
-        "mockery/mockery": "^1.4"
+        "symfony/process": "^5.4",
+        "symfony/console": "^5.4",
+        "mockery/mockery": "^1.5"
     },
     "require-dev": {
-        "beyondcode/laravel-dump-server": "^1.7",
-        "nunomaduro/phpinsights": "^2.1"
+        "beyondcode/laravel-dump-server": "^1.8",
+        "nunomaduro/phpinsights": "^2.2"
     },
     "suggest": {
         "phpunit/phpunit": "^9.5"
