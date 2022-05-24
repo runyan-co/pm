@@ -149,7 +149,6 @@ class Reset
             ? 'phpredis'
             : 'predis';
 
-
         $install_command = [
             PHP_BINARY.' artisan processmaker:install',
             '--no-interaction',
@@ -235,7 +234,6 @@ EOFMYSQL";
             'CACHE_DRIVER=redis',
             'DOCKER_HOST_URL=http://host.docker.internal',
             'PROCESSMAKER_SCRIPTS_TIMEOUT='.Cli::findExecutable('timeout'),
-            'PROCESSMAKER_SCRIPTS_DOCKER='.Cli::findExecutable('docker'),
             'SESSION_DRIVER=redis',
             'SESSION_SECURE_COOKIE=false',
             'SESSION_DOMAIN='.$domain,
@@ -255,9 +253,13 @@ EOFMYSQL";
 
         // Append the remaining env variables to enable the
         // core codebase to function in a local environment
-        $env_contents .= implode("\n", $append);
+        $env_contents .= implode(PHP_EOL, $append);
+        $env_contents = explode(PHP_EOL, $env_contents);
+
+        // Sort alphabetically
+        asort($env_contents);
 
         // Save the file contents
-        $this->files->putAsUser($path, $env_contents);
+        $this->files->putAsUser($path, implode(PHP_EOL, $env_contents));
     }
 }
