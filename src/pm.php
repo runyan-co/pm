@@ -11,6 +11,7 @@ if (file_exists(__DIR__.'/../vendor/autoload.php')) {
     require getenv('HOME').'/.composer/vendor/autoload.php';
 }
 
+use ProcessMaker\Cli\Facades\Core;
 use Illuminate\Container\Container;
 use Illuminate\Support\Str;
 use ProcessMaker\Cli\Application;
@@ -387,75 +388,11 @@ if (!is_dir(PM_HOME_PATH)) {
             }
 
             // Count up the total number of steps in the reset process
-            $steps = collect($command_set)->flatten()->count();
+			$cli->createProgressBar(collect($command_set)->flatten()->count(), 'message');
+			$cli->getProgress()->setMessage('Installing core...');
 
-            // Add a step for removing old codebase and
-            // another for cloning a fresh copy from the
-            // git repository
-            $steps += 2;
-
-            // Save any IDE config files
-            if ($ide_config = IDE::hasConfiguration()) {
-                $steps += 2;
-            }
-
-            // The steps increase by 2, for example, if supervisor
-            // is running since we need to stop it before executing
-            // the commands, then restart it when were finished
-            if ($supervisor_should_restart = Supervisor::running()) {
-                $steps += 2;
-            }
-
-            // Add a progress bar
-            $cli->createProgressBar($steps, 'message');
-            $cli->getProgress()->setMessage('Starting install...');
-            $cli->getProgress()->start();
-
-            // First, let's stop any supervisor processes
-            // to prevent them from throwing exceptions
-            // or causing other chaos while we do the reset
-            if ($supervisor_should_restart) {
-                $cli->getProgress()->setMessage('Stopping supervisor processes...');
-                $cli->getProgress()->advance();
-
-                Supervisor::stop();
-            }
-
-            // Save the contents of the IDE settings
-            if ($ide_config) {
-                $cli->getProgress()->setMessage('Copying IDE settings...');
-                $cli->getProgress()->advance();
-
-                $ide_config = IDE::temporarilyMoveConfiguration();
-
-				// Make sure we re-add the IDE settings
-	            // in case of a premature shutdown
-				register_shutdown_function(static function () use ($ide_config) {
-					if (is_string($ide_config) && FileSystem::exists($ide_config)) {
-                        IDE::moveConfigurationBack($ide_config);
-					}
-				});
-            }
-
-            // Remove old codebase
-            $cli->getProgress()->setMessage('Removing old codebase...');
-            $cli->getProgress()->advance();
-
-            FileSystem::rmdir(Config::codebasePath());
-
-            // Clone a fresh copy
-            $cli->getProgress()->setMessage('Cloning codebase repo...');
-            $cli->getProgress()->advance();
-
-            Git::clone('processmaker', Str::replaceLast('processmaker', '', Config::codebasePath()));
-
-            // Re-add the IDE settings (if they existed to begin with)
-            if ($ide_config) {
-                $cli->getProgress()->setMessage('Re-adding IDE settings...');
-                $cli->getProgress()->advance();
-
-                IDE::moveConfigurationBack($ide_config);
-            }
+			// Install processmaker/processmaker
+			Core::install();
 
             // Iterate through them and execute
             foreach ($command_set as $type_of_commands => $commands) {
@@ -499,7 +436,7 @@ if (!is_dir(PM_HOME_PATH)) {
 
             // If supervisor processes were stopped before
             // executing the commands, now we can restart them
-            if ($supervisor_should_restart) {
+            if (Core::getInstance()::$shouldRestartSupervisor) {
                 $cli->getProgress()->setMessage('Restarting supervisor processes...');
                 $cli->getProgress()->advance();
 

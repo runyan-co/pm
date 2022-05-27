@@ -4,15 +4,12 @@ declare(strict_types=1);
 
 namespace ProcessMaker\Cli;
 
-use DomainException;
-use Exception;
+use DomainException, Exception, LogicException, RuntimeException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
-use LogicException;
 use ProcessMaker\Cli\Facades\Composer;
 use ProcessMaker\Cli\Facades\Config;
 use ProcessMaker\Cli\Facades\Git;
-use RuntimeException;
 
 class Packages
 {
@@ -113,15 +110,15 @@ class Packages
      */
     public function getSupportedPackages(bool $enterpriseOnly = false, ?string $branch = null): array
     {
-        if (!$this->packageExists('packages')) {
+        if (!Core::isInstalled()) {
             $this->clonePackage('packages');
         }
 
         // We need the packages meta-package to get the
         // list of supported enterprise packages that
         // ProcessMaker\Cli 4 is compatible with
-        $packages_package = $this->getPackage('packages');
-        $packages_package_path = $packages_package['path'];
+        $packages_package = (object) $this->getPackage('packages');
+        $packages_package_path = $packages_package->path;
 
         // Make sure we're on the right branch
         $branch = $branch ?? Git::getDefaultBranch($packages_package_path);
