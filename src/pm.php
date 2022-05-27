@@ -392,7 +392,7 @@ if (!is_dir(PM_HOME_PATH)) {
 			$cli->getProgress()->setMessage('Installing core...');
 
 			// Install processmaker/processmaker
-			Core::install();
+			Core::clone();
 
             // Iterate through them and execute
             foreach ($command_set as $type_of_commands => $commands) {

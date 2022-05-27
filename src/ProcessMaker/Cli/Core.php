@@ -2,7 +2,6 @@
 
 namespace ProcessMaker\Cli;
 
-use ProcessMaker\Cli\Facades\CommandLine;
 use ProcessMaker\Cli\Facades\Composer;
 use ProcessMaker\Cli\Facades\FileSystem;
 use ProcessMaker\Cli\Facades\Supervisor;
@@ -33,26 +32,11 @@ class Core
     public static $shouldRestartSupervisor = false;
 
     /**
-     * @param  \ProcessMaker\Cli\Facades\CommandLine  $cli
-     * @param  \ProcessMaker\Cli\FileSystem  $files
-     * @param  \ProcessMaker\Cli\Facades\Composer  $composer
-     */
-    public function __construct(
-        CommandLine $cli,
-        FileSystem $files,
-        Composer $composer)
-    {
-        $this->cli = $cli;
-        $this->files = $files;
-        $this->composer = $composer;
-    }
-
-    /**
      * Clone down the most recent version of processmaker/processmaker
      *
      * @return void
      */
-    public function install()
+    public function clone()
     {
         // Save any IDE config files
         if ($ide = IDE::hasConfiguration()) {
@@ -87,12 +71,46 @@ class Core
     }
 
     /**
+     * Local copy of processmaker/processmaker is version 4.1.*
+     *
+     * @return bool
+     */
+    public function is41()
+    {
+        $json = Composer::getComposerJson(codebase_path());
+
+        return Str::startsWith($json->version, '4.1');
+    }
+
+    /**
+     * Local copy of processmaker/processmaker is version 4.2.*
+     *
+     * @return bool
+     */
+    public function is42()
+    {
+        $json = Composer::getComposerJson(codebase_path());
+
+        return Str::startsWith($json->version, '4.2');
+    }
+
+    /**
+     * Returns true if core is already installed, false if not
+     *
+     * @return bool
+     */
+    public function isCloned(): bool
+    {
+        return FileSystem::exists(codebase_path('composer.json'));
+    }
+
+    /**
      * Returns true if core is already installed, false if not
      *
      * @return bool
      */
     public function isInstalled(): bool
     {
-        return $this->files->exists($env = codebase_path('.env'));
+        return FileSystem::exists(codebase_path('.env'));
     }
 }
