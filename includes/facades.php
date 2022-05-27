@@ -112,3 +112,8 @@ class Environment extends Facade {}
  * @see \ProcessMaker\Cli\Logs
  */
 class Logs extends Facade {}
+
+/**
+ * @see \ProcessMaker\Cli\Core
+ */
+class Core extends Facade {}

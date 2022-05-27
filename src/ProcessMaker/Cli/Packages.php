@@ -4,15 +4,13 @@ declare(strict_types=1);
 
 namespace ProcessMaker\Cli;
 
-use DomainException;
-use Exception;
-use Illuminate\Support\Collection;
-use Illuminate\Support\Str;
-use LogicException;
+use DomainException, Exception, LogicException, RuntimeException;
 use ProcessMaker\Cli\Facades\Composer;
 use ProcessMaker\Cli\Facades\Config;
 use ProcessMaker\Cli\Facades\Git;
-use RuntimeException;
+use ProcessMaker\Cli\Facades\Core;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 
 class Packages
 {
@@ -113,28 +111,38 @@ class Packages
      */
     public function getSupportedPackages(bool $enterpriseOnly = false, ?string $branch = null): array
     {
+        $is41 = ($branch === '4.1-develop');
+
         if (!$this->packageExists('packages')) {
             $this->clonePackage('packages');
         }
 
-        // We need the packages meta-package to get the
-        // list of supported enterprise packages that
-        // ProcessMaker\Cli 4 is compatible with
-        $packages_package = $this->getPackage('packages');
-        $packages_package_path = $packages_package['path'];
+        if (!$is41 && (!Core::isCloned() || !Core::is42())) {
+            Core::clone();
+        }
+
+        // We need the packages meta-package for version 4.1 to get the list of supported enterprise
+        // packages that ProcessMaker 4 is compatible with, otherwise we use the composer.json from
+        // the core codebase to retrieve the list of enterprise packages
+        if ($is41) {
+            $repo = (object) $this->getPackage('packages');
+            $path_to_repo = $repo->path;
+        } else {
+            $path_to_repo = codebase_path();
+        }
 
         // Make sure we're on the right branch
-        $branch = $branch ?? Git::getDefaultBranch($packages_package_path);
-        $branchSwitchResult = Git::switchBranch($branch, $packages_package_path);
+        $branch = $branch ?? Git::getDefaultBranch($path_to_repo);
+        $branchSwitchResult = Git::switchBranch($branch, $path_to_repo);
 
         // Find and decode composer.json
-        $composer_json = Composer::getComposerJson($packages_package_path);
+        $composer_json = Composer::getComposerJson($path_to_repo);
 
         try {
             // We want just the package names for now
             $supported_packages = array_keys(get_object_vars($composer_json->extra->processmaker->enterprise));
         } catch (Exception $exception) {
-            throw new LogicException('Enterprise packages not found in processmaker/packages composer.json');
+            throw new LogicException('Enterprise packages not found in composer.json');
         }
 
         if (! $enterpriseOnly) {

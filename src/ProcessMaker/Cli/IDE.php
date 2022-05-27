@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace ProcessMaker\Cli;
 
+use ProcessMaker\Cli\Facades\FileSystem;
 use Illuminate\Support\Str;
 
 class IDE
@@ -25,19 +26,6 @@ class IDE
     public static $tmp = 'tmp';
 
     /**
-     * @var \ProcessMaker\Cli\FileSystem
-     */
-    protected $files;
-
-    /**
-     * @return void
-     */
-    public function __construct(FileSystem $files)
-    {
-        $this->files = $files;
-    }
-
-    /**
      * Check if a given path contains a project-specific IDE
      * configuration file. If a path is not passed as an
      * argument, it will check in the local core codebase.
@@ -46,10 +34,10 @@ class IDE
      *
      * @return void|string
      */
-    public function hasConfiguration(?string $path = null)
+    public static function hasConfiguration(?string $path = null)
     {
         foreach (self::$types as $ide => $file_name) {
-            if ($this->files->exists($path = ($path ? "{$path}/{$file_name}" : codebase_path($file_name)))) {
+            if (FileSystem::exists($path = ($path ? "{$path}/{$file_name}" : codebase_path($file_name)))) {
                 return $path;
             }
         }
@@ -59,21 +47,21 @@ class IDE
      * Move temporarily stored IDE config file(s) from the tmp directory
      * back to its respective project directory
      */
-    public function moveConfigurationBack(string $from, ?string $to = null): void
+    public static function moveConfigurationBack(string $from, ?string $to = null): void
     {
-        if (! $this->files->exists($from)) {
+        if (!FileSystem::exists($from)) {
             return;
         }
 
-        if (! $this->files->exists($to = $to ?? codebase_path())) {
+        if (!FileSystem::exists($to = $to ?? codebase_path())) {
             return;
         }
 
-        if (! $this->files->mv($from, $to)) {
+        if (!FileSystem::mv($from, $to)) {
             return;
         }
 
-        $this->files->rmdir(Str::remove(basename($from), $from));
+        FileSystem::rmdir(Str::remove(basename($from), $from));
     }
 
     /**
@@ -81,9 +69,9 @@ class IDE
      *
      * @return string|void
      */
-    public function temporarilyMoveConfiguration(?string $path = null)
+    public static function temporarilyMoveConfiguration(?string $path = null)
     {
-        if (! $this->files->exists($path = $path ?? codebase_path())) {
+        if (!FileSystem::exists($path = $path ?? codebase_path())) {
             return;
         }
 
@@ -92,7 +80,7 @@ class IDE
 
         // Check for config files, if one exists then $path will
         // become the absolute path to the config file
-        if (!is_string($path = $this->hasConfiguration($path))) {
+        if (!is_string($path = self::hasConfiguration($path))) {
             return;
         }
 
@@ -100,18 +88,18 @@ class IDE
         $filename = basename($path);
 
         // Create the tmp/ directory if it doesn't exist
-        if (! $this->files->exists($tmp_path = pm_path(self::$tmp))) {
-            $this->files->mkdir($tmp_path);
+        if (!FileSystem::exists($tmp_path = pm_path(self::$tmp))) {
+             FileSystem::mkdir($tmp_path);
         }
 
         // Create the project-specific directory name within the tmp
         // directory (in case we have other config files present)
-        if (! $this->files->exists($move_to_path = "{$tmp_path}/{$basename}")) {
-            $this->files->mkdir($move_to_path);
+        if (!FileSystem::exists($move_to_path = "{$tmp_path}/{$basename}")) {
+             FileSystem::mkdir($move_to_path);
         }
 
         // Move the config files to the tmp directory and return it
-        if ($this->files->mv($path, $move_to_path)) {
+        if (FileSystem::mv($path, $move_to_path)) {
             return "{$move_to_path}/{$filename}";
         }
     }

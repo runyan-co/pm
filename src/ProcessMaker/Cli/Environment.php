@@ -8,9 +8,9 @@ use Illuminate\Support\Str;
 
 class Environment
 {
-    public const NODE_VERSION = '14.4.0';
+    public const NODE_VERSION = '16';
 
-    public const NPM_VERSION = '6.14.5';
+    public const NPM_VERSION = '8';
 
     public const PHP_EXTENSIONS = [
         'GD' => 'https://www.php.net/manual/en/image.installation.php',
@@ -105,7 +105,7 @@ class Environment
             throw new RuntimeException($output);
         });
 
-        if (($version = Str::remove([PHP_EOL, 'v'], $version)) !== self::NODE_VERSION) {
+        if (!Str::startsWith(Str::remove([PHP_EOL, 'v'], $version), self::NODE_VERSION)) {
             throw new RuntimeException("Node version check failed. Found version {$version} but ".self::NODE_VERSION." is required.");
         }
     }
@@ -123,7 +123,7 @@ class Environment
             throw new RuntimeException($output);
         });
 
-        if (($version = Str::remove([PHP_EOL, 'v'], $version)) !== self::NPM_VERSION) {
+        if (!Str::startsWith(Str::remove([PHP_EOL, 'v'], $version), self::NPM_VERSION)) {
             throw new RuntimeException("Npm version check failed. Found version {$version} but ".self::NPM_VERSION." is required.");
         }
     }
