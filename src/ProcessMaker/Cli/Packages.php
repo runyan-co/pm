@@ -431,15 +431,15 @@ class Packages
         // Grab the list of supported enterprise packages
         $enterprise_packages = Collection::make(
             $this->getSupportedPackages(true, $branch)
-        );
+        )->keyBy(function ($package) {
+            return $package;
+        });
 
         // Find the composer executable
         $composer = $this->cli->findExecutable('composer');
 
         // Build the stack of commands to run
-        return $enterprise_packages->keyBy(function ($package) {
-            return $package;
-        })->transform(function (string $package) use ($composer) {
+        return $enterprise_packages->transform(function (string $package) use ($composer) {
 
             $artisan_install_command = PHP_BINARY." artisan ${package}:install --no-interaction";
 
@@ -453,7 +453,7 @@ class Packages
             }
 
             return Collection::make([
-                "{$composer} require processmaker/{$package} --no-interaction",
+                "{$composer} require processmaker/{$package} --no-interaction --ignore-platform-reqs --optimize-autoloader --no-progress",
                 $artisan_install_command,
                 PHP_BINARY." artisan vendor:publish --tag={$package} --no-interaction",
             ]);

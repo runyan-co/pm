@@ -52,7 +52,7 @@ class Reset
      * @var array
      */
     protected static $composerCommands = [
-        'composer install --optimize-autoloader --no-interaction --no-progress',
+        'composer install --optimize-autoloader --no-interaction --no-progress --ignore-platform-reqs',
     ];
 
     /**

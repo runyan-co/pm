@@ -11,21 +11,19 @@ if (file_exists(__DIR__.'/../vendor/autoload.php')) {
     require getenv('HOME').'/.composer/vendor/autoload.php';
 }
 
-use ProcessMaker\Cli\Facades\Core;
 use Illuminate\Container\Container;
 use Illuminate\Support\Str;
 use ProcessMaker\Cli\Application;
-use ProcessMaker\Cli\Facades\ParallelRun;
+use ProcessMaker\Cli\Facades\Core;
 use ProcessMaker\Cli\Facades\CommandLine;
 use ProcessMaker\Cli\Facades\Config;
-use ProcessMaker\Cli\Facades\PackagesCi;
 use ProcessMaker\Cli\Facades\Environment;
 use ProcessMaker\Cli\Facades\FileSystem;
-use ProcessMaker\Cli\Facades\Git;
 use ProcessMaker\Cli\Facades\Logs;
-use ProcessMaker\Cli\Facades\IDE;
 use ProcessMaker\Cli\Facades\Install;
 use ProcessMaker\Cli\Facades\Packages;
+use ProcessMaker\Cli\Facades\PackagesCi;
+use ProcessMaker\Cli\Facades\ParallelRun;
 use ProcessMaker\Cli\Facades\Reset;
 use ProcessMaker\Cli\Facades\Supervisor;
 
@@ -297,7 +295,7 @@ if (!is_dir(PM_HOME_PATH)) {
 	* |                                                |
 	* -------------------------------------------------+
 	*/
-    $app->command('core:both [branch] [-4|--for_41_develop] [-d|--bounce-database] [--no-npm] [-y|--yes]',
+    $app->command('core:both [branch] [-4|--for_41_develop] [-d|--bounce-database] [--no-npm] [-y|--yes] [--except=]',
         function (InputInterface $input, OutputInterface $output) use ($app): void {
 
 		// This command (core:both) basically just let's us run both the
@@ -323,15 +321,19 @@ if (!is_dir(PM_HOME_PATH)) {
                 }
 			}
 
+            if ($input->getOption('verbose')) {
+                $command .= ' -v';
+            }
+
 			// core:install-packages command options/arguments
 			if (Str::contains($command, 'core:install-packages')) {
 				if ($input->getArgument('branch') === '4.1-develop' || $input->getOption('for_41_develop')) {
 					$command .= ' -4';
 				}
-			}
 
-            if ($input->getOption('verbose')) {
-                $command .= ' -v';
+                if ($except_packages = $input->getOption('except')) {
+                    $command .= " --except {$except_packages}";
+                }
             }
 
 			return $command;
@@ -357,6 +359,9 @@ if (!is_dir(PM_HOME_PATH)) {
     $app->command('core:reset [branch] [-d|--bounce-database] [--no-npm] [-y|--yes]',
         function (InputInterface $input, OutputInterface $output): void {
 
+            // Grab an instance of the CommandLine class
+            $cli = CommandLine::getInstance();
+
             $branch = $input->getArgument('branch') ?? 'develop';
             $verbose = $input->getOption('verbose') ?? false;
             $no_npm = $input->getOption('no-npm') ?? false;
@@ -368,9 +373,6 @@ if (!is_dir(PM_HOME_PATH)) {
             if (!$no_confirmation && $helper->ask($input, $output, $question) === false) {
                 warning_then_exit('Reset aborted.');
             }
-
-            // Grab an instance of the CommandLine class
-            $cli = CommandLine::getInstance();
 
 			// Since we completely remove the codebase directory when resetting,
 	        // we need to make sure the current working directory is different
@@ -388,7 +390,7 @@ if (!is_dir(PM_HOME_PATH)) {
             }
 
             // Count up the total number of steps in the reset process
-			$cli->createProgressBar(collect($command_set)->flatten()->count(), 'message');
+			$cli->createProgressBar((collect($command_set)->flatten()->count() - 1), 'message');
 			$cli->getProgress()->setMessage('Installing core...');
 
 			// Install processmaker/processmaker
@@ -465,7 +467,7 @@ if (!is_dir(PM_HOME_PATH)) {
      * |                                                |
      * -------------------------------------------------+
      */
-    $app->command('core:install-packages [-4|--for_41_develop]',
+    $app->command('core:install-packages [-4|--for_41_develop] [--except=]',
         function (InputInterface $input, OutputInterface $output): void {
 
             // Indicates if we should install the 4.1-develop
@@ -474,6 +476,14 @@ if (!is_dir(PM_HOME_PATH)) {
 
             // Should the output be verbose or not
             $verbose = $input->getOption('verbose');
+
+			// If the --except option is provided, attempt to remove
+	        // the package(s) from the packages to be installed
+			if ($except_packages = $input->getOption('except')) {
+				$except_packages = Str::contains($except_packages, ',')
+                    ? explode(',', $except_packages)
+                    : [$except_packages];
+			}
 
             // Use an anonymous function to we can easily re-run if
             // we decide to force the installation of the packages
@@ -505,6 +515,17 @@ if (!is_dir(PM_HOME_PATH)) {
                 // prevent the incompatible exception from being thrown
                 $install_commands = $build_install_commands(true);
             }
+
+			// If there are any packages to remove from the install
+	        // list, go ahead and search for them as a key in the
+	        // $install_command and remove them if they exist
+	        if ($except_packages) {
+				foreach ($except_packages as $package_name) {
+					if($install_commands->has($package_name)) {
+					   $install_commands->forget($package_name);
+					}
+				}
+	        }
 
             // Grab an instance of the CommandLine class
             $cli = CommandLine::getInstance();
@@ -601,6 +622,7 @@ if (!is_dir(PM_HOME_PATH)) {
         }
     )->descriptions('Installs all enterprise packages in the local ProcessMaker core (processmaker/processmaker) codebase.', [
             '--for_41_develop' => 'Uses 4.1 version of the supported packages',
+	        '--except' => 'A comma-seperated list of enterprise packages to exclude from installation',
         ]);
 
     /*
