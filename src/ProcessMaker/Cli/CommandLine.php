@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace ProcessMaker\Cli;
 
 use Illuminate\Support\Str;
+use http\Exception\InvalidArgumentException;
 use Symfony\Component\Console\Helper\ProgressBar;
 use Symfony\Component\Console\Output\ConsoleOutput;
 use Symfony\Component\Process\Process;
@@ -21,9 +22,41 @@ class CommandLine
      */
     private $microtimeStart;
 
+    /**
+     * @var array
+     */
+    private $snapshots = [];
+
     public function __construct()
     {
         $this->microtimeStart = microtime(true);
+    }
+
+    public function getSnapshots()
+    {
+        return $this->snapshots;
+    }
+
+    /**
+     * Take a snapshot of the elapsed time
+     *
+     * @param  string  $key
+     *
+     * @return void
+     * @throws \Illuminate\Contracts\Container\BindingResolutionException
+     * @throws \Exception
+     */
+    public function takeSnapshot(string $key): void
+    {
+        $key = trim($key);
+        $key = Str::replace([PHP_EOL, " "], '_', $key);
+
+        $this->snapshots[] = (object) [
+            'key' => $key,
+            'microtime' => microtime(true),
+            'formatted_from_start' => $this->getTimeElapsed(),
+            'seconds_elapsed_from_start' => $this->getSecondsElapsed(null, 10),
+        ];
     }
 
     /**
@@ -32,12 +65,13 @@ class CommandLine
      * seconds as a two-point floating point decimal
      *
      * @param  float|null  $microtime
+     * @param  int  $precision
      *
      * @return float
      */
-    public function getSecondsElapsed(float $microtime = null): float
+    public function getSecondsElapsed(float $microtime = null, int $precision = 2): float
     {
-        return round(abs($microtime ?? $this->microtimeStart - microtime(true)), 2);
+        return round(abs($microtime ?? $this->microtimeStart - microtime(true)), $precision);
     }
 
     /**

@@ -339,12 +339,7 @@ if (!is_dir(PM_HOME_PATH)) {
 			return $command;
 		};
 
-		info('Re-installing processmaker/processmaker locally...');
-
 		if ($app->runCommand($command('core:reset'), $output) === 0) {
-
-			info(PHP_EOL.'Installing enterprise packages...');
-
             $app->runCommand($command('core:install-packages'), $output);
 		}
 	})->descriptions('Runs both the core:reset and core:install-packages commands');
@@ -361,6 +356,8 @@ if (!is_dir(PM_HOME_PATH)) {
 
             // Grab an instance of the CommandLine class
             $cli = CommandLine::getInstance();
+
+            $cli->takeSnapshot('pre input');
 
             $branch = $input->getArgument('branch') ?? 'develop';
             $verbose = $input->getOption('verbose') ?? false;
@@ -380,6 +377,10 @@ if (!is_dir(PM_HOME_PATH)) {
 				warning_then_exit('This command cannot be executed directly in the codebase directly. Please change to the another directory and try again.');
 			}
 
+			info('Beginning install...');
+
+            $cli->takeSnapshot('pre commands built');
+
             // Put together the commands necessary
             // to reset the core codebase
             $command_set = Reset::buildResetCommands($branch, $bounce_database);
@@ -389,12 +390,16 @@ if (!is_dir(PM_HOME_PATH)) {
                 unset($command_set['npm']);
             }
 
+            $cli->takeSnapshot('commands built');
+
             // Count up the total number of steps in the reset process
 			$cli->createProgressBar((collect($command_set)->flatten()->count() - 1), 'message');
 			$cli->getProgress()->setMessage('Installing core...');
 
 			// Install processmaker/processmaker
 			Core::clone();
+
+            $cli->takeSnapshot('core cloned');
 
             // Iterate through them and execute
             foreach ($command_set as $type_of_commands => $commands) {
@@ -404,7 +409,7 @@ if (!is_dir(PM_HOME_PATH)) {
                     try {
                         $out = $cli->run($command, static function ($exitCode, $out): void {
                             throw new RuntimeException($out);
-                        }, Config::codebasePath());
+                        }, codebase_path());
                     } catch (RuntimeException $exception) {
                         $cli->getProgress()->clear();
 
@@ -413,6 +418,8 @@ if (!is_dir(PM_HOME_PATH)) {
 
                         exit(0);
                     }
+
+					$cli->takeSnapshot($command);
 
                     if (! $verbose) {
                         continue;
@@ -429,12 +436,16 @@ if (!is_dir(PM_HOME_PATH)) {
                 $cli->getProgress()->advance();
             }
 
+            $cli->takeSnapshot('commands done');
+
             // Now we need to reformat the .env file so it's
             // setup properly for a local environment
             $cli->getProgress()->setMessage('Reformatting .env file...');
             $cli->getProgress()->advance();
 
             Reset::formatEnvFile();
+
+            $cli->takeSnapshot('env reset');
 
             // If supervisor processes were stopped before
             // executing the commands, now we can restart them
@@ -445,18 +456,24 @@ if (!is_dir(PM_HOME_PATH)) {
                 Supervisor::restart();
             }
 
+            $cli->takeSnapshot('supervisor restarted');
+
             $cli->getProgress()->finish();
             $cli->getProgress()->clear();
 
             // See how long it took to run everything
             $timing = $cli->getTimeElapsed();
 
+            $cli->takeSnapshot('done');
+
             // Output and we're done!
             output(PHP_EOL."<info>Finished in</info> ${timing}");
+
+			dump($cli->getSnapshots());
         }
     )->descriptions('Reset the core codebase, install composer and npm dependencies, builds npm assets', [
             'branch' => 'Default: \'develop\'. Otherwise will try to switch to the branch name provided.',
-            '--bounce-database' => 'Drop and create a new database',
+            '--bounce-database' => 'Drop and recreate new database',
             '--no-npm' => 'Skip npm commands',
         ]);
 
@@ -484,6 +501,8 @@ if (!is_dir(PM_HOME_PATH)) {
                     ? explode(',', $except_packages)
                     : [$except_packages];
 			}
+
+			info('Setting up enterprise package installation...');
 
             // Use an anonymous function to we can easily re-run if
             // we decide to force the installation of the packages
@@ -542,7 +561,7 @@ if (!is_dir(PM_HOME_PATH)) {
 
             // Add a progress bar
             $cli->createProgressBar($steps, 'message');
-            $cli->getProgress()->setMessage('Starting install...');
+            $cli->getProgress()->setMessage('Starting enterprise packages install...');
             $cli->getProgress()->start();
 
             // First, let's stop any supervisor processes
@@ -618,7 +637,6 @@ if (!is_dir(PM_HOME_PATH)) {
 
             // Output and we're done!
             output(PHP_EOL."<info>Finished in</info> ${timing}");
-
         }
     )->descriptions('Installs all enterprise packages in the local ProcessMaker core (processmaker/processmaker) codebase.', [
             '--for_41_develop' => 'Uses 4.1 version of the supported packages',
