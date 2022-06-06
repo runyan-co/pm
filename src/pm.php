@@ -42,7 +42,7 @@ use function ProcessMaker\Cli\warning_then_exit;
 
 Container::setInstance(new Container());
 
-$app = new Application('ProcessMaker CLI Tool', '1.1.4');
+$app = new Application('ProcessMaker CLI Tool', '1.1.5');
 
 /*
  * -------------------------------------------------+
