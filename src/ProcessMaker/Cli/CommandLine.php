@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace ProcessMaker\Cli;
 
 use Illuminate\Support\Str;
-use http\Exception\InvalidArgumentException;
+use ProcessMaker\Cli\Facades\SnapshotsRepository as Snapshots;
 use Symfony\Component\Console\Helper\ProgressBar;
 use Symfony\Component\Console\Output\ConsoleOutput;
 use Symfony\Component\Process\Process;
@@ -18,89 +18,13 @@ class CommandLine
     private $progress;
 
     /**
-     * @var float
-     */
-    private $microtimeStart;
-
-    /**
-     * @var array
-     */
-    private $snapshots = [];
-
-    public function __construct()
-    {
-        $this->microtimeStart = microtime(true);
-    }
-
-    public function getSnapshots()
-    {
-        return $this->snapshots;
-    }
-
-    /**
-     * Take a snapshot of the elapsed time
+     * Instruct the container to resolve a class instance as a singleton
      *
-     * @param  string  $key
-     *
-     * @return void
-     * @throws \Illuminate\Contracts\Container\BindingResolutionException
-     * @throws \Exception
+     * @return bool
      */
-    public function takeSnapshot(string $key): void
+    public static function shouldBeSingleton(): bool
     {
-        $key = trim($key);
-        $key = Str::replace([PHP_EOL, " "], '_', $key);
-
-        $this->snapshots[] = (object) [
-            'key' => $key,
-            'microtime' => microtime(true),
-            'formatted_from_start' => $this->getTimeElapsed(),
-            'seconds_elapsed_from_start' => $this->getSecondsElapsed(null, 10),
-        ];
-    }
-
-    /**
-     * Get the difference of microtime elapsed between the provided
-     * $microtime and the current microtime, converted to
-     * seconds as a two-point floating point decimal
-     *
-     * @param  float|null  $microtime
-     * @param  int  $precision
-     *
-     * @return float
-     */
-    public function getSecondsElapsed(float $microtime = null, int $precision = 2): float
-    {
-        return round(abs($microtime ?? $this->microtimeStart - microtime(true)), $precision);
-    }
-
-    /**
-     * Returns the timing (in seconds) since the
-     * CommandLine class was instantiated
-     */
-    public function getTimeElapsed(): string
-    {
-        $seconds = $this->getSecondsElapsed();
-        $minutes = round($seconds / 60, 2);
-        $hours = round($minutes / 60, 2);
-
-        if ($hours >= 1.00) {
-            $minutes = abs($hours - round($hours));
-            $minutes = round($minutes * 60);
-            $hours = round($hours);
-
-            return "${hours}h and ${minutes}m";
-        }
-
-        if ($minutes >= 1.00) {
-            $seconds = abs($minutes - round($minutes));
-            $seconds = round($seconds * 60);
-            $minutes = round($minutes);
-
-            return "${minutes}m and ${seconds}s";
-        }
-
-        return "${seconds}s";
+        return false;
     }
 
     /**
@@ -188,6 +112,8 @@ class CommandLine
             function ($type, $line) use (&$processOutput): void {
                 $processOutput .= $line;
             });
+
+        Snapshots::takeSnapshot($command);
 
         if ($process->getExitCode() > 0) {
             $onError($process->getExitCode(), $processOutput);

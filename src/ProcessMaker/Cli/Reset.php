@@ -9,6 +9,7 @@ use Illuminate\Support\Str;
 use ProcessMaker\Cli\Facades\Install;
 use ProcessMaker\Cli\Facades\CommandLine as Cli;
 use ProcessMaker\Cli\Facades\Config;
+use ProcessMaker\Cli\Facades\FileSystem;
 
 use function extension_loaded;
 use function implode;
@@ -18,16 +19,6 @@ use function array_merge;
 
 class Reset
 {
-    /**
-     * @var \ProcessMaker\Cli\CommandLine
-     */
-    protected $cli;
-
-    /**
-     * @var \ProcessMaker\Cli\FileSystem
-     */
-    protected $files;
-
     /**
      * @var string
      */
@@ -62,16 +53,6 @@ class Reset
         'npm install --non-interactive --quiet',
         'npm run dev --non-interactive --quiet',
     ];
-
-    /**
-     * @param  \ProcessMaker\Cli\CommandLine  $cli
-     * @param  \ProcessMaker\Cli\FileSystem  $files
-     */
-    public function __construct(CommandLine $cli, FileSystem $files)
-    {
-        $this->cli = $cli;
-        $this->files = $files;
-    }
 
     /**
      * Build a keyed array of arrays, each of which contains a subset of commands to
@@ -115,7 +96,7 @@ class Reset
         }
 
         // Find the composer executable
-        $composer = $this->cli->findExecutable('composer');
+        $composer = Cli::findExecutable('composer');
 
         // Make sure the composer executable is referenced absolutely
         $composerCommands = ['composer' => array_map(static function ($line) use ($composer) {
@@ -140,7 +121,7 @@ class Reset
     }
 
     /**
-     * The ProcessMaker\Cli artisan install command with the arguments
+     * The ProcessMaker artisan install command with the arguments
      * pre-populated (speeds everything up quite a bit)
      */
     public function buildArtisanInstallCommand(): string
@@ -215,7 +196,7 @@ EOFMYSQL";
             $path = Config::codebasePath('.env');
         }
 
-        if (! $this->files->exists($path)) {
+        if (!FileSystem::exists($path)) {
             throw new DomainException(".env file could not be found: {$path}");
         }
 
@@ -243,7 +224,7 @@ EOFMYSQL";
             'NODE_BIN_PATH='.Cli::findExecutable('node'),
         ];
 
-        $env_contents = $this->files->get($path);
+        $env_contents = FileSystem::get($path);
 
         // Search for and remove the any of the strings
         // found in the $find_and_remove array
@@ -260,6 +241,6 @@ EOFMYSQL";
         asort($env_contents);
 
         // Save the file contents
-        $this->files->putAsUser($path, implode(PHP_EOL, $env_contents));
+        FileSystem::putAsUser($path, implode(PHP_EOL, $env_contents));
     }
 }

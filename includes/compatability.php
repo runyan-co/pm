@@ -10,7 +10,7 @@ if (PHP_SAPI !== 'cli') {
 $inTestingEnvironment = strpos($_SERVER['SCRIPT_NAME'], 'phpunit') !== false;
 
 if (PHP_OS !== 'Darwin' && ! $inTestingEnvironment) {
-    echo 'pm only supports the Mac operating system.'.PHP_EOL;
+    echo 'pm only supports the macOS operating system.'.PHP_EOL;
 
     exit(1);
 }

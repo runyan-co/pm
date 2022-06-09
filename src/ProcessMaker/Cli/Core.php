@@ -12,21 +12,6 @@ use Illuminate\Support\Str;
 class Core
 {
     /**
-     * @var \ProcessMaker\Cli\CommandLine
-     */
-    public $cli;
-
-    /**
-     * @var \ProcessMaker\Cli\FileSystem
-     */
-    public $files;
-
-    /**
-     * @var \ProcessMaker\Cli\Composer
-     */
-    public $composer;
-
-    /**
      * @var bool
      */
     public static $shouldRestartSupervisor = false;

@@ -9,6 +9,14 @@ use Illuminate\Container\Container;
 abstract class Facade
 {
     /**
+     * The key for the binding in the container.
+     */
+    public static function containerKey(): string
+    {
+        return 'ProcessMaker\Cli\\'.basename(str_replace('\\', '/', static::class));
+    }
+
+    /**
      * Call a non-static method on the facade.
      *
      * @param  string  $method
@@ -19,17 +27,7 @@ abstract class Facade
      */
     public static function __callStatic(string $method, array $parameters)
     {
-        Container::getInstance()->singletonIf(static::containerKey());
-
         return call_user_func_array([static::getInstance(), $method], $parameters);
-    }
-
-    /**
-     * The key for the binding in the container.
-     */
-    public static function containerKey(): string
-    {
-        return 'ProcessMaker\Cli\\'.basename(str_replace('\\', '/', static::class));
     }
 
     /**
@@ -39,7 +37,23 @@ abstract class Facade
      */
     public static function getInstance()
     {
+        if (self::shouldBeSingleton()) {
+            Container::getInstance()->singletonIf(static::containerKey());
+        }
+
         return Container::getInstance()->make(static::containerKey());
+    }
+
+    /**
+     * Instruct the container to resolve a class instance as a singleton
+     *
+     * @return bool
+     */
+    public static function shouldBeSingleton(): bool
+    {
+        $methodExists = method_exists($class = static::containerKey(), 'shouldBeSingleton');
+
+        return $methodExists ? $class::shouldBeSingleton() : true;
     }
 }
 
@@ -117,3 +131,8 @@ class Logs extends Facade {}
  * @see \ProcessMaker\Cli\Core
  */
 class Core extends Facade {}
+
+/**
+ * @see \ProcessMaker\Cli\SnapshotsRepository
+ */
+class SnapshotsRepository extends Facade {}

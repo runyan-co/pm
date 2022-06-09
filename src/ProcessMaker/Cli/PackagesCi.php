@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace ProcessMaker\Cli;
 
-use ProcessMaker\Cli\Facades\Config;
+use Illuminate\Support\Collection;
+use ProcessMaker\Cli\Facades\Packages;
 use ProcessMaker\Cli\Facades\Git;
 
 class PackagesCi
@@ -16,19 +17,16 @@ class PackagesCi
      */
     public function install(): void
     {
-        $packages = resolve(Packages::class);
+        $packages = Packages::getInstance();
         $list = $packages->getSupportedPackages();
 
         // Clone packages
         foreach ($list as $package) {
-            Git::clone($package, Config::packagesPath());
+            Git::clone($package, packages_path());
         }
 
         Composer::addRepositoryPath();
-
-        $listString = $this->composerRequireList($list);
-
-        Composer::require($listString);
+        Composer::require($this->composerRequireList($list));
     }
 
     /**
@@ -38,7 +36,7 @@ class PackagesCi
      */
     private function composerRequireList(array $list): string
     {
-        return collect($list)->map(function ($package) {
+        return Collection::make($list)->map(function ($package) {
             return "processmaker/${package}";
         })->join(' ');
     }

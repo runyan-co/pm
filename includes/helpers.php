@@ -5,13 +5,12 @@ declare(strict_types=1);
 namespace ProcessMaker\Cli;
 
 use Illuminate\Container\Container;
-use ProcessMaker\Cli\Facades\CommandLine as Cli;
 use ProcessMaker\Cli\Facades\Config;
 use Symfony\Component\Console\Helper\Table;
 use Symfony\Component\Console\Output\ConsoleOutput;
 
 if (!defined('HOMEBREW_PREFIX')) {
-    define('HOMEBREW_PREFIX', Cli::run('printf $(brew --prefix)'));
+    define('HOMEBREW_PREFIX', exec('printf $(brew --prefix)'));
 }
 
 if (!defined('PM_HOME_PATH')) {
@@ -19,7 +18,7 @@ if (!defined('PM_HOME_PATH')) {
 }
 
 if (!defined('USER_HOME')) {
-    define('USER_HOME', ($home = getenv('HOME')) ? $home : null ?? Cli::run('printf $(cd ~ && pwd)'));
+    define('USER_HOME', ($home = getenv('HOME')) ? $home : null ?? exec('printf $(cd ~ && pwd)'));
 }
 
 /**

@@ -16,7 +16,6 @@ use Illuminate\Support\Str;
 use ProcessMaker\Cli\Application;
 use ProcessMaker\Cli\Facades\Core;
 use ProcessMaker\Cli\Facades\CommandLine;
-use ProcessMaker\Cli\Facades\Config;
 use ProcessMaker\Cli\Facades\Environment;
 use ProcessMaker\Cli\Facades\FileSystem;
 use ProcessMaker\Cli\Facades\Logs;
@@ -25,6 +24,7 @@ use ProcessMaker\Cli\Facades\Packages;
 use ProcessMaker\Cli\Facades\PackagesCi;
 use ProcessMaker\Cli\Facades\ParallelRun;
 use ProcessMaker\Cli\Facades\Reset;
+use ProcessMaker\Cli\Facades\SnapshotsRepository as Snapshots;
 use ProcessMaker\Cli\Facades\Supervisor;
 
 use Symfony\Component\Console\Input\InputInterface;
@@ -357,8 +357,6 @@ if (!is_dir(PM_HOME_PATH)) {
             // Grab an instance of the CommandLine class
             $cli = CommandLine::getInstance();
 
-            $cli->takeSnapshot('pre input');
-
             $branch = $input->getArgument('branch') ?? 'develop';
             $verbose = $input->getOption('verbose') ?? false;
             $no_npm = $input->getOption('no-npm') ?? false;
@@ -379,8 +377,6 @@ if (!is_dir(PM_HOME_PATH)) {
 
 			info('Beginning install...');
 
-            $cli->takeSnapshot('pre commands built');
-
             // Put together the commands necessary
             // to reset the core codebase
             $command_set = Reset::buildResetCommands($branch, $bounce_database);
@@ -390,16 +386,14 @@ if (!is_dir(PM_HOME_PATH)) {
                 unset($command_set['npm']);
             }
 
-            $cli->takeSnapshot('commands built');
-
             // Count up the total number of steps in the reset process
 			$cli->createProgressBar((collect($command_set)->flatten()->count() - 1), 'message');
+
 			$cli->getProgress()->setMessage('Installing core...');
+            $cli->getProgress()->start();
 
 			// Install processmaker/processmaker
 			Core::clone();
-
-            $cli->takeSnapshot('core cloned');
 
             // Iterate through them and execute
             foreach ($command_set as $type_of_commands => $commands) {
@@ -419,8 +413,6 @@ if (!is_dir(PM_HOME_PATH)) {
                         exit(0);
                     }
 
-					$cli->takeSnapshot($command);
-
                     if (! $verbose) {
                         continue;
                     }
@@ -436,16 +428,12 @@ if (!is_dir(PM_HOME_PATH)) {
                 $cli->getProgress()->advance();
             }
 
-            $cli->takeSnapshot('commands done');
-
             // Now we need to reformat the .env file so it's
             // setup properly for a local environment
             $cli->getProgress()->setMessage('Reformatting .env file...');
             $cli->getProgress()->advance();
 
             Reset::formatEnvFile();
-
-            $cli->takeSnapshot('env reset');
 
             // If supervisor processes were stopped before
             // executing the commands, now we can restart them
@@ -456,20 +444,14 @@ if (!is_dir(PM_HOME_PATH)) {
                 Supervisor::restart();
             }
 
-            $cli->takeSnapshot('supervisor restarted');
-
             $cli->getProgress()->finish();
             $cli->getProgress()->clear();
 
             // See how long it took to run everything
-            $timing = $cli->getTimeElapsed();
-
-            $cli->takeSnapshot('done');
+            $timing = Snapshots::getTimeElapsed();
 
             // Output and we're done!
             output(PHP_EOL."<info>Finished in</info> ${timing}");
-
-			dump($cli->getSnapshots());
         }
     )->descriptions('Reset the core codebase, install composer and npm dependencies, builds npm assets', [
             'branch' => 'Default: \'develop\'. Otherwise will try to switch to the branch name provided.',
@@ -633,7 +615,7 @@ if (!is_dir(PM_HOME_PATH)) {
             $cli->getProgress()->clear();
 
             // See how long it took to run everything
-            $timing = $cli->getTimeElapsed();
+            $timing = Snapshots::getTimeElapsed();
 
             // Output and we're done!
             output(PHP_EOL."<info>Finished in</info> ${timing}");

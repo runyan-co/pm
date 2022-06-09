@@ -5,23 +5,11 @@ declare(strict_types=1);
 namespace ProcessMaker\Cli;
 
 use ProcessMaker\Cli\Facades\CommandLine as Cli;
+use ProcessMaker\Cli\Facades\FileSystem;
 
 class Install
 {
-    /**
-     * @var \ProcessMaker\Cli\FileSystem
-     */
-    public $files;
-
     public $bin = HOMEBREW_PREFIX.'/bin/pm';
-
-    /**
-     * @param  \ProcessMaker\Cli\FileSystem  $files
-     */
-    public function __construct(FileSystem $files)
-    {
-        $this->files = $files;
-    }
 
     /**
      * @return void
@@ -54,12 +42,12 @@ class Install
 
         $this->write($config_values);
 
-        $this->files->chown($this->path(), user());
+        FileSystem::chown($this->path(), user());
     }
 
     public function installed(): bool
     {
-        return $this->files->exists(PM_HOME_PATH);
+        return FileSystem::exists(PM_HOME_PATH);
     }
 
     /**
@@ -67,7 +55,7 @@ class Install
      */
     public function uninstall(): void
     {
-        $this->files->unlink(PM_HOME_PATH);
+        FileSystem::unlink(PM_HOME_PATH);
     }
 
     /**
@@ -75,7 +63,7 @@ class Install
      */
     public function createConfigurationDirectory(): void
     {
-        $this->files->ensureDirExists(PM_HOME_PATH, user());
+        FileSystem::ensureDirExists(PM_HOME_PATH, user());
     }
 
     /**
@@ -95,7 +83,7 @@ class Install
      */
     public function read(string $key = null)
     {
-        $json = json_decode($this->files->get($this->path()), true);
+        $json = json_decode(FileSystem::get($this->path()), true);
 
         if ($key && is_array($json) && array_key_exists($key, $json)) {
             return $json[$key];
@@ -128,7 +116,7 @@ class Install
      */
     public function write(array $config): void
     {
-        $this->files->putAsUser(
+        FileSystem::putAsUser(
             $this->path(),
             json_encode($config, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES).PHP_EOL
         );
