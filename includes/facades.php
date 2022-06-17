@@ -60,6 +60,11 @@ abstract class Facade
 }
 
 /**
+ * @see \ProcessMaker\Cli\Application
+ */
+class Application extends Facade {}
+
+/**
  * @see \ProcessMaker\Cli\CommandLine
  */
 class CommandLine extends Facade {}

@@ -7,22 +7,42 @@ use DomainException;
 use RuntimeException;
 use Illuminate\Support\Str;
 use Illuminate\Support\Collection;
+use Symfony\Component\Console\Helper\Table;
+use Symfony\Component\Console\Output\ConsoleOutput;
+use Symfony\Component\Console\Helper\TableSeparator;
 
 class SnapshotsRepository
 {
-    /**
-     * @var float
-     */
-    private $microtimeStart;
-
     /**
      * @var array
      */
     private $repository = [];
 
-    public function __construct()
+    /**
+     * Record and display timings
+     *
+     * @var bool
+     */
+    private static $display = false;
+
+    /**
+     * Enable timing snapshots
+     *
+     * @return void
+     */
+    public static function enable(): void
     {
-        $this->microtimeStart = microtime(true);
+        static::$display = true;
+    }
+
+    /**
+     * Timing snapshots are enabled
+     *
+     * @return bool
+     */
+    public function isEnabled(): bool
+    {
+        return static::$display;
     }
 
     /**
@@ -49,44 +69,73 @@ class SnapshotsRepository
 
     public function __destruct()
     {
+        if (!$this->isEnabled()) {
+            return;
+        }
+
         if (blank($snapshots = $this->getSnapshots())) {
             return;
         }
 
+        // Grab the final tallies only for display
         $snapshots = array_filter($snapshots, static function ($value) {
             return Str::contains($value->key, 'final-');
         });
 
-        table(['Command', 'Time Taken'],
-            array_map(static function ($snapshot) {
-                $time = $snapshot->time;
+        // Add a table separator and then the total time
+        // taken to run all commands cumulatively
+        $snapshots[] = new TableSeparator();
+        $snapshots[] = (object) [
+            'value' => '(all)',
+            'time' => $this->getTimeElapsed(),
+            'time_in_seconds' => $this->getSecondsElapsed(),
+            'time_in_milliseconds' => $this->getMillisecondsElapsed(),
+        ];
 
-                if (($seconds = (float) $snapshot->time_in_seconds) <= 5) {
-                    $time = "<fg=green>{$time}</>";
-                } elseif ($seconds < 10) {
-                    $time = "<fg=yellow>{$time}</>";
-                } else {
-                    $time = "<fg=red>{$time}</>";
-                }
+        $rows = array_map(static function ($row) {
+            if ($row instanceof TableSeparator) {
+                return $row;
+            }
 
-                return [
-                    'command' => $snapshot->value,
-                    'time' => $time
-                ];
-            }, $snapshots));
+            $time = $row->time;
+
+            if ($row->value === '(all)') {
+                $style = 'options=bold,underscore';
+            } else if (($seconds = (float) $row->time_in_seconds) <= 5) {
+                $style = 'fg=green';
+            } elseif ($seconds < 10) {
+                $style = 'fg=yellow';
+            } else {
+                $style = 'fg=red';
+            }
+
+            return [
+                'command' => $row->value,
+                'time' => "<{$style}>{$time}</> or <{$style}>{$row->time_in_milliseconds}ms</>",
+            ];
+        }, $snapshots);
+
+        table(['Command', 'Timing'], $rows);
     }
 
     /**
      * Start a snapshot
      *
      * @param $value
+     * @param  callable  $callable
      *
-     * @return void
+     * @return mixed
      * @throws \Exception
      */
-    public function startSnapshot($value): string
+    public function startSnapshot($value, callable $callable)
     {
-        return $this->takeSnapshot($value);
+        $startKey = $this->takeSnapshot($value);
+
+        $called = $callable();
+
+        $this->stopSnapshot($value, $startKey);
+
+        return $called;
     }
 
     /**
@@ -111,6 +160,7 @@ class SnapshotsRepository
 
         $time_in_seconds = $this->getSecondsElapsed($start_values->microtime, $stop_values->microtime);
         $time_taken = $this->getTimeElapsed($start_values->microtime, $stop_values->microtime);
+        $time_in_milliseconds = $this->getMillisecondsElapsed($start_values->microtime, $stop_values->microtime);
         $final_key = $this->generateSnapshotKey('final');
 
         $value = Str::limit(trim(Str::replace(PHP_EOL, " ", $value)),  64);
@@ -121,6 +171,7 @@ class SnapshotsRepository
             'value' => $value,
             'time' => $time_taken,
             'time_in_seconds' => $time_in_seconds,
+            'time_in_milliseconds' => $time_in_milliseconds,
             'microtime' => microtime(true),
         ];
     }
@@ -193,8 +244,27 @@ class SnapshotsRepository
         float $microtime_end = null,
         int $precision = 4): float
     {
-        return round(abs(($microtime_start ?? $this->microtimeStart) -
+        return round(abs(($microtime_start ?? MICROTIME_START) -
             ($microtime_end ?? microtime(true))), $precision);
+    }
+
+    /**
+     * Get the difference of microtime elapsed between the provided
+     * $microtime and the current or provided microtime end time, converted to
+     * seconds as a two-point floating point decimal
+     *
+     * @param  float|null  $microtime_start
+     * @param  float|null  $microtime_end
+     * @param  int  $precision
+     *
+     * @return float
+     */
+    public function getMillisecondsElapsed(
+        float $microtime_start = null,
+        float $microtime_end = null): float
+    {
+        return floor(abs((($microtime_start ?? MICROTIME_START)
+                - ($microtime_end ?? microtime(true)))) * 1000);
     }
 
     /**

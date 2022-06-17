@@ -4,9 +4,7 @@ declare(strict_types=1);
 
 namespace ProcessMaker\Cli;
 
-use Throwable;
 use Illuminate\Container\Container;
-use ProcessMaker\Cli\Facades\Application;
 use ProcessMaker\Cli\Facades\Config;
 use Symfony\Component\Console\Helper\Table;
 use Symfony\Component\Console\Output\ConsoleOutput;

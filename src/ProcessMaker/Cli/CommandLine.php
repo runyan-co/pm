@@ -98,15 +98,18 @@ class CommandLine
             $process->setWorkingDirectory($workingDir);
         }
 
-        $snapshot_start_key = Snapshots::startSnapshot($command);
+        $runCommand = static function () use (&$process, &$processOutput) {
+            $process->setTimeout(null)->run(
+                function ($type, $line) use (&$processOutput) {
+                    $processOutput .= $line;
+                });
+        };
 
-        $process->setTimeout(null)->run(
-            function ($type, $line) use (&$processOutput) {
-                $processOutput .= $line;
-            }
-        );
-
-        Snapshots::stopSnapshot($command, $snapshot_start_key);
+        if (Snapshots::isEnabled()) {
+            Snapshots::startSnapshot($command, $runCommand);
+        } else {
+            $runCommand();
+        }
 
         if ($process->getExitCode() > 0) {
             $onError($process->getExitCode(), $processOutput);

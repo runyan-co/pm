@@ -3,6 +3,8 @@
 
 declare(strict_types=1);
 
+define('MICROTIME_START', microtime(true));
+
 if (file_exists(__DIR__.'/../vendor/autoload.php')) {
     require __DIR__.'/../vendor/autoload.php';
 } elseif (file_exists(__DIR__.'/../../../autoload.php')) {
@@ -32,7 +34,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Question\ChoiceQuestion;
 use Symfony\Component\Console\Question\ConfirmationQuestion;
 use Symfony\Component\Console\Question\Question;
-
+use function ProcessMaker\Cli\resolve;
 use function ProcessMaker\Cli\codebase_path;
 use function ProcessMaker\Cli\info;
 use function ProcessMaker\Cli\output;
@@ -79,6 +81,7 @@ $app->command('ci:install-packages', function (): void {
 })->descriptions('Intended to use with CircleCi to install necessary enterprise packages for testing.');
 
 if (!is_dir(PM_HOME_PATH)) {
+
     /*
      * -------------------------------------------------+
      * |                                                |
