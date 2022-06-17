@@ -5,25 +5,17 @@ declare(strict_types=1);
 namespace ProcessMaker\Cli;
 
 use DomainException, Exception, LogicException, RuntimeException;
+use ProcessMaker\Cli\Facades\CommandLine as Cli;
 use ProcessMaker\Cli\Facades\Composer;
 use ProcessMaker\Cli\Facades\Config;
 use ProcessMaker\Cli\Facades\Git;
 use ProcessMaker\Cli\Facades\Core;
+use ProcessMaker\Cli\Facades\FileSystem;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
 class Packages
 {
-    /**
-     * @var \ProcessMaker\Cli\CommandLine
-     */
-    public $cli;
-
-    /**
-     * @var \ProcessMaker\Cli\FileSystem
-     */
-    public $files;
-
     /**
      * Non-bpmn and non-executor packages required for core
      * processmaker/processmaker functionality
@@ -56,16 +48,6 @@ class Packages
         'docker-executor-python',
         'docker-executor-r',
     ];
-
-    /**
-     * @param  \ProcessMaker\Cli\CommandLine  $cli
-     * @param  \ProcessMaker\Cli\FileSystem  $files
-     */
-    public function __construct(CommandLine $cli, FileSystem $files)
-    {
-        $this->cli = $cli;
-        $this->files = $files;
-    }
 
     /**
      * Get all non-enterprise packages required by processmaker/processmaker
@@ -191,12 +173,12 @@ class Packages
         }
 
         if ($force) {
-            $this->files->rmdir(Config::packagesPath()."/{$name}");
+            FileSystem::rmdir(Config::packagesPath()."/{$name}");
         }
 
         $command = "git clone https://github.com/processmaker/{$name}";
 
-        $output = $this->cli->run($command, function ($code, $out) use ($name): void {
+        $output = Cli::run($command, function ($code, $out) use ($name): void {
             throw new RuntimeException("Failed to clone {$name}: ".PHP_EOL.$out);
         }, Config::packagesPath());
 
@@ -216,7 +198,7 @@ class Packages
         // we start cloning the new ones down
         if ($force) {
             foreach ($this->getPackages() as $package) {
-                $this->files->rmdir($package['path']);
+                FileSystem::rmdir($package['path']);
             }
         }
 
@@ -264,12 +246,12 @@ class Packages
             $package_directory = packages_path();
         }
 
-        return array_filter($this->files->scandir($package_directory), function ($dir) use ($package_directory) {
+        return array_filter(FileSystem::scandir($package_directory), function ($dir) use ($package_directory) {
             // Set the absolute path to the file or directory
             $dir = $package_directory.'/'.$dir;
 
             // Filter out any non-directory files
-            return $this->files->is_dir($dir) && ! is_file($dir);
+            return FileSystem::is_dir($dir) && ! is_file($dir);
         });
     }
 
@@ -312,11 +294,11 @@ class Packages
      */
     public function getCurrentGitBranchName(string $path): string
     {
-        if (! $this->files->is_dir($path)) {
+        if (! FileSystem::is_dir($path)) {
             return '...';
         }
         // Run this command and get the current git branch
-        $branch = $this->cli->run('git rev-parse --abbrev-ref HEAD', null, $path);
+        $branch = Cli::run('git rev-parse --abbrev-ref HEAD', null, $path);
 
         // Remove unnecessary end of line character(s)
         return Str::replace(["\n", PHP_EOL], '', $branch);
@@ -412,7 +394,7 @@ class Packages
      */
     public function buildPackageInstallCommands(bool $for_41_develop = false, bool $force = false): Collection
     {
-        if (! $this->files->is_dir(codebase_path())) {
+        if (! FileSystem::is_dir(codebase_path())) {
             throw new LogicException('Could not find processmaker codebase: '.codebase_path());
         }
 
@@ -436,7 +418,7 @@ class Packages
         });
 
         // Find the composer executable
-        $composer = $this->cli->findExecutable('composer');
+        $composer = Cli::findExecutable('composer');
 
         // Build the stack of commands to run
         return $enterprise_packages->transform(function (string $package) use ($composer) {

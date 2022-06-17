@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace ProcessMaker\Cli;
 
 use Illuminate\Support\Str;
+use ProcessMaker\Cli\Facades\SnapshotsRepository as Snapshots;
 use Symfony\Component\Console\Helper\ProgressBar;
 use Symfony\Component\Console\Output\ConsoleOutput;
 use Symfony\Component\Process\Process;
@@ -15,59 +16,6 @@ class CommandLine
      * @var ProgressBar
      */
     private $progress;
-
-    /**
-     * @var float
-     */
-    private $microtimeStart;
-
-    public function __construct()
-    {
-        $this->microtimeStart = microtime(true);
-    }
-
-    /**
-     * Get the difference of microtime elapsed between the provided
-     * $microtime and the current microtime, converted to
-     * seconds as a two-point floating point decimal
-     *
-     * @param  float|null  $microtime
-     *
-     * @return float
-     */
-    public function getSecondsElapsed(float $microtime = null): float
-    {
-        return round(abs($microtime ?? $this->microtimeStart - microtime(true)), 2);
-    }
-
-    /**
-     * Returns the timing (in seconds) since the
-     * CommandLine class was instantiated
-     */
-    public function getTimeElapsed(): string
-    {
-        $seconds = $this->getSecondsElapsed();
-        $minutes = round($seconds / 60, 2);
-        $hours = round($minutes / 60, 2);
-
-        if ($hours >= 1.00) {
-            $minutes = abs($hours - round($hours));
-            $minutes = round($minutes * 60);
-            $hours = round($hours);
-
-            return "${hours}h and ${minutes}m";
-        }
-
-        if ($minutes >= 1.00) {
-            $seconds = abs($minutes - round($minutes));
-            $seconds = round($seconds * 60);
-            $minutes = round($minutes);
-
-            return "${minutes}m and ${seconds}s";
-        }
-
-        return "${seconds}s";
-    }
 
     /**
      * Returns absolute path of an executable by name
@@ -150,10 +98,18 @@ class CommandLine
             $process->setWorkingDirectory($workingDir);
         }
 
-        $process->setTimeout(null)->run(
-            function ($type, $line) use (&$processOutput): void {
-                $processOutput .= $line;
-            });
+        $runCommand = static function () use (&$process, &$processOutput) {
+            $process->setTimeout(null)->run(
+                function ($type, $line) use (&$processOutput) {
+                    $processOutput .= $line;
+                });
+        };
+
+        if (Snapshots::isEnabled()) {
+            Snapshots::startSnapshot($command, $runCommand);
+        } else {
+            $runCommand();
+        }
 
         if ($process->getExitCode() > 0) {
             $onError($process->getExitCode(), $processOutput);

@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace ProcessMaker\Cli;
 
-use ProcessMaker\Cli\Facades\FileSystem;
 use Illuminate\Support\Str;
+use ProcessMaker\Cli\Facades\FileSystem;
 
 class IDE
 {

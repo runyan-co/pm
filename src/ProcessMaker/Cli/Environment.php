@@ -5,6 +5,7 @@ namespace ProcessMaker\Cli;
 use Generator;
 use RuntimeException;
 use Illuminate\Support\Str;
+use ProcessMaker\Cli\Facades\CommandLine as Cli;
 
 class Environment
 {
@@ -28,19 +29,6 @@ class Environment
     protected static $availableChecks = [
         'checkExecutables', 'checkPhpExtensions', 'checkNodeVersion', 'checkNpmVersion'
     ];
-
-    /**
-     * @var \ProcessMaker\Cli\CommandLine
-     */
-    protected $cli;
-
-    /**
-     * @param  \ProcessMaker\Cli\CommandLine  $cli
-     */
-    public function __construct(CommandLine $cli)
-    {
-        $this->cli = $cli;
-    }
 
     /**
      * Returns an iterable with each value being one of the
@@ -70,7 +58,7 @@ class Environment
     public function checkExecutables(): void
     {
         foreach (self::EXECUTABLES as $executable => $message) {
-            $this->cli->run("which {$executable}", static function ($errorCode, $output) use ($message) {
+            Cli::run("which {$executable}", static function ($errorCode, $output) use ($message) {
                 throw new RuntimeException($message);
             });
         }
@@ -101,7 +89,7 @@ class Environment
      */
     public function checkNodeVersion(): void
     {
-        $version = $this->cli->runCommand('node -v', static function ($exitCode, $output) {
+        $version = Cli::runCommand('node -v', static function ($exitCode, $output) {
             throw new RuntimeException($output);
         });
 
@@ -119,7 +107,7 @@ class Environment
      */
     public function checkNpmVersion(): void
     {
-        $version = $this->cli->runCommand('npm -v', static function ($exitCode, $output) {
+        $version = Cli::runCommand('npm -v', static function ($exitCode, $output) {
             throw new RuntimeException($output);
         });
 

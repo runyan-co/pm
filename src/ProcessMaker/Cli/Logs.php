@@ -3,22 +3,10 @@
 namespace ProcessMaker\Cli;
 
 use Illuminate\Support\Str;
+use ProcessMaker\Cli\Facades\FileSystem;
 
 class Logs
 {
-    /**
-     * @var \ProcessMaker\Cli\FileSystem
-     */
-    protected $files;
-
-    /**
-     * @param  \ProcessMaker\Cli\FileSystem  $files
-     */
-    public function __construct(FileSystem $files)
-    {
-        $this->files = $files;
-    }
-
     /**
      * Get the application log file path(s)
      *
@@ -26,7 +14,7 @@ class Logs
      */
     public function getApplicationLogs(): array
     {
-        $log_directory_files = $this->files->scandir(
+        $log_directory_files = FileSystem::scandir(
             codebase_path('storage/logs')
         );
 

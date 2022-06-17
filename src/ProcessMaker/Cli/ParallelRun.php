@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace ProcessMaker\Cli;
 
-use Illuminate\Support\Collection;
 use LogicException;
+use Illuminate\Support\Collection;
+use ProcessMaker\Cli\Facades\CommandLine as Cli;
 use React\ChildProcess\Process;
 
 class ParallelRun
@@ -31,21 +32,14 @@ class ParallelRun
     protected $outputCollection;
 
     /**
-     * @var \ProcessMaker\Cli\CommandLine
-     */
-    protected $cli;
-
-    /**
      * @param  \ProcessMaker\Cli\CommandLine  $cli
      * @param  \Illuminate\Support\Collection  $outputCollection
      * @param  \Illuminate\Support\Collection  $processCollections
      */
     public function __construct(
-        CommandLine $cli,
         Collection $outputCollection,
         Collection $processCollections
     ) {
-        $this->cli = $cli;
         $this->processCollections = $processCollections;
         $this->outputCollection = $outputCollection;
     }
@@ -199,7 +193,7 @@ class ParallelRun
         });
 
         if ($bundles->isEmpty()) {
-            throw new LogicException('No bundles of Processes found');
+            throw new LogicException('No bundles of processes found');
         }
 
         $this->setProcessIndexes($bundles);
@@ -222,7 +216,7 @@ class ParallelRun
             return $bundle->transform(function (Process $process, $index) use (&$bundle) {
                 $process->on('exit', function ($exitCode, $termSignal) use (&$bundle, $process, $index): void {
                     if (! $this->verbose) {
-                        $this->cli->getProgress()->advance();
+                        Cli::getProgress()->advance();
                     }
 
                     // Add to the "exited" process collection
@@ -262,8 +256,8 @@ class ParallelRun
                     if ($this->finished()) {
                         // Keeps the stdout clean during verbose mode
                         if (!$this->verbose) {
-                            $this->cli->getProgress()->finish();
-                            $this->cli->getProgress()->clear();
+                            Cli::getProgress()->finish();
+                            Cli::getProgress()->clear();
                         }
 
                         // Last but not least, run the bound callback
@@ -323,7 +317,6 @@ class ParallelRun
     private function setProcessIndexes(Collection $bundles): void
     {
         $index = 0;
-
         $total_processes = 0;
 
         // Count up all of the processes
@@ -344,7 +337,7 @@ class ParallelRun
         });
 
         if (! $this->verbose) {
-            $this->cli->getProgress($total_processes);
+            Cli::getProgress($total_processes);
         }
     }
 

@@ -6,35 +6,23 @@ namespace ProcessMaker\Cli;
 
 use RuntimeException;
 use Illuminate\Support\Str;
+use ProcessMaker\Cli\Facades\CommandLine as Cli;
 
 class Supervisor
 {
-    /**
-     * @var \ProcessMaker\Cli\CommandLine
-     */
-    protected $cli;
-
-    /**
-     * @param  \ProcessMaker\Cli\CommandLine  $cli
-     */
-    public function __construct(CommandLine $cli)
-    {
-        $this->cli = $cli;
-    }
-
     /**
      * Checks is supervisord is running and available to receive commands
      */
     public function running(): bool
     {
         try {
-            return is_string($this->cli->run('supervisorctl status', function ($exitCode, $output): void {
+            return is_string(Cli::run('supervisorctl status', static function ($exitCode, $output): void {
                 if (Str::contains($output, 'refused connection')) {
-                    throw new RuntimeException();
+                    throw new RuntimeException;
                 }
 
                 if (Str::contains($output, 'command not found')) {
-                    throw new RuntimeException();
+                    throw new RuntimeException;
                 }
             }));
         } catch (RuntimeException $exception) {
@@ -56,7 +44,7 @@ class Supervisor
 
         $process = $process ?? 'all';
 
-        return is_string($this->cli->run("supervisorctl stop {$process}", function ($exitCode, $output): void {
+        return is_string(Cli::run("supervisorctl stop {$process}", function ($exitCode, $output): void {
             throw new RuntimeException($output);
         }));
     }
@@ -75,7 +63,7 @@ class Supervisor
 
         $process = $process ?? 'all';
 
-        $restarted = $this->cli->run("supervisorctl restart {$process}", function ($exitCode, $output): void {
+        $restarted = Cli::run("supervisorctl restart {$process}", function ($exitCode, $output): void {
             throw new RuntimeException($output);
         });
 

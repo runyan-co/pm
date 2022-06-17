@@ -3,6 +3,8 @@
 
 declare(strict_types=1);
 
+define('MICROTIME_START', microtime(true));
+
 if (file_exists(__DIR__.'/../vendor/autoload.php')) {
     require __DIR__.'/../vendor/autoload.php';
 } elseif (file_exists(__DIR__.'/../../../autoload.php')) {
@@ -16,7 +18,6 @@ use Illuminate\Support\Str;
 use ProcessMaker\Cli\Application;
 use ProcessMaker\Cli\Facades\Core;
 use ProcessMaker\Cli\Facades\CommandLine;
-use ProcessMaker\Cli\Facades\Config;
 use ProcessMaker\Cli\Facades\Environment;
 use ProcessMaker\Cli\Facades\FileSystem;
 use ProcessMaker\Cli\Facades\Logs;
@@ -25,6 +26,7 @@ use ProcessMaker\Cli\Facades\Packages;
 use ProcessMaker\Cli\Facades\PackagesCi;
 use ProcessMaker\Cli\Facades\ParallelRun;
 use ProcessMaker\Cli\Facades\Reset;
+use ProcessMaker\Cli\Facades\SnapshotsRepository as Snapshots;
 use ProcessMaker\Cli\Facades\Supervisor;
 
 use Symfony\Component\Console\Input\InputInterface;
@@ -32,7 +34,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Question\ChoiceQuestion;
 use Symfony\Component\Console\Question\ConfirmationQuestion;
 use Symfony\Component\Console\Question\Question;
-
+use function ProcessMaker\Cli\resolve;
 use function ProcessMaker\Cli\codebase_path;
 use function ProcessMaker\Cli\info;
 use function ProcessMaker\Cli\output;
@@ -40,9 +42,11 @@ use function ProcessMaker\Cli\table;
 use function ProcessMaker\Cli\warning;
 use function ProcessMaker\Cli\warning_then_exit;
 
-Container::setInstance(new Container());
+Container::setInstance($container = new Container);
 
 $app = new Application('ProcessMaker CLI Tool', '1.1.5');
+
+$app->useContainer($container);
 
 /*
  * -------------------------------------------------+
@@ -77,6 +81,7 @@ $app->command('ci:install-packages', function (): void {
 })->descriptions('Intended to use with CircleCi to install necessary enterprise packages for testing.');
 
 if (!is_dir(PM_HOME_PATH)) {
+
     /*
      * -------------------------------------------------+
      * |                                                |
@@ -111,7 +116,7 @@ if (!is_dir(PM_HOME_PATH)) {
 
         // Callback to autocomplete the directories available
         // as the user is typing
-        $filesystem_callback = function (string $userInput): array {
+        $filesystem_callback = static function (string $userInput): array {
             $inputPath = preg_replace('%(/|^)[^/]*$%', '$1', $userInput);
             $inputPath = $inputPath === '' ? '.' : $inputPath;
             $foundFilesAndDirs = @scandir($inputPath) ?: [];
@@ -339,12 +344,7 @@ if (!is_dir(PM_HOME_PATH)) {
 			return $command;
 		};
 
-		info('Re-installing processmaker/processmaker locally...');
-
 		if ($app->runCommand($command('core:reset'), $output) === 0) {
-
-			info(PHP_EOL.'Installing enterprise packages...');
-
             $app->runCommand($command('core:install-packages'), $output);
 		}
 	})->descriptions('Runs both the core:reset and core:install-packages commands');
@@ -380,6 +380,8 @@ if (!is_dir(PM_HOME_PATH)) {
 				warning_then_exit('This command cannot be executed directly in the codebase directly. Please change to the another directory and try again.');
 			}
 
+			info('Beginning install...');
+
             // Put together the commands necessary
             // to reset the core codebase
             $command_set = Reset::buildResetCommands($branch, $bounce_database);
@@ -391,10 +393,19 @@ if (!is_dir(PM_HOME_PATH)) {
 
             // Count up the total number of steps in the reset process
 			$cli->createProgressBar((collect($command_set)->flatten()->count() - 1), 'message');
+
 			$cli->getProgress()->setMessage('Installing core...');
+            $cli->getProgress()->start();
 
 			// Install processmaker/processmaker
 			Core::clone();
+
+			// If --no-npm was passed, then we need to inform the user
+	        // they need to restart supervisor once the npm assets are
+	        // installed so the echo server can function properly
+	        if ($no_npm && Core::getInstance()::$shouldRestartSupervisor) {
+                Core::getInstance()::$shouldRestartSupervisor = false;
+	        }
 
             // Iterate through them and execute
             foreach ($command_set as $type_of_commands => $commands) {
@@ -404,7 +415,7 @@ if (!is_dir(PM_HOME_PATH)) {
                     try {
                         $out = $cli->run($command, static function ($exitCode, $out): void {
                             throw new RuntimeException($out);
-                        }, Config::codebasePath());
+                        }, codebase_path());
                     } catch (RuntimeException $exception) {
                         $cli->getProgress()->clear();
 
@@ -438,27 +449,34 @@ if (!is_dir(PM_HOME_PATH)) {
 
             // If supervisor processes were stopped before
             // executing the commands, now we can restart them
-            if (Core::getInstance()::$shouldRestartSupervisor) {
+            if (!$no_npm && Core::getInstance()::$shouldRestartSupervisor) {
                 $cli->getProgress()->setMessage('Restarting supervisor processes...');
                 $cli->getProgress()->advance();
 
                 Supervisor::restart();
             }
 
+			if ($no_npm) {
+				output(PHP_EOL.PHP_EOL."<comment>Important:</comment>");
+				output("<comment>|---</comment> Since the --no-npm option was passed, the supervisor processes ".PHP_EOL.
+					"<comment>|---</comment> need to be manually restarted (to make sure the echo server ".PHP_EOL.
+					"<comment>|---</comment> doesn't throw an exception)");
+			}
+
             $cli->getProgress()->finish();
             $cli->getProgress()->clear();
 
             // See how long it took to run everything
-            $timing = $cli->getTimeElapsed();
+            $timing = Snapshots::getTimeElapsed();
 
             // Output and we're done!
             output(PHP_EOL."<info>Finished in</info> ${timing}");
         }
     )->descriptions('Reset the core codebase, install composer and npm dependencies, builds npm assets', [
-            'branch' => 'Default: \'develop\'. Otherwise will try to switch to the branch name provided.',
-            '--bounce-database' => 'Drop and create a new database',
-            '--no-npm' => 'Skip npm commands',
-        ]);
+		'branch' => 'Default: \'develop\'. Otherwise will try to switch to the branch name provided.',
+		'--bounce-database' => 'Drop and recreate new database',
+		'--no-npm' => 'Skip npm commands',
+	]);
 
     /*
      * -------------------------------------------------+
@@ -484,6 +502,8 @@ if (!is_dir(PM_HOME_PATH)) {
                     ? explode(',', $except_packages)
                     : [$except_packages];
 			}
+
+			info('Setting up enterprise package installation...');
 
             // Use an anonymous function to we can easily re-run if
             // we decide to force the installation of the packages
@@ -536,19 +556,19 @@ if (!is_dir(PM_HOME_PATH)) {
             // The steps increase by 2, for example, if supervisor
             // is running since we need to stop it before executing
             // the commands, then restart it when were finished
-            if ($supervisor_should_restart = Supervisor::running()) {
+            if (Core::getInstance()::$shouldRestartSupervisor = Supervisor::running()) {
                 $steps += 2;
             }
 
             // Add a progress bar
             $cli->createProgressBar($steps, 'message');
-            $cli->getProgress()->setMessage('Starting install...');
+            $cli->getProgress()->setMessage('Starting enterprise packages install...');
             $cli->getProgress()->start();
 
             // First, let's stop any supervisor processes
             // to prevent them from throwing exceptions
             // or causing other chaos while we do the reset
-            if ($supervisor_should_restart) {
+            if (Core::getInstance()::$shouldRestartSupervisor) {
                 $cli->getProgress()->setMessage('Stopping supervisor processes...');
                 $cli->getProgress()->advance();
 
@@ -602,7 +622,7 @@ if (!is_dir(PM_HOME_PATH)) {
             }
 
             // Restart supervisor processes
-            if ($supervisor_should_restart) {
+            if (Core::getInstance()::$shouldRestartSupervisor) {
                 $cli->getProgress()->setMessage('Restarting supervisor processes...');
                 $cli->getProgress()->advance();
 
@@ -614,11 +634,10 @@ if (!is_dir(PM_HOME_PATH)) {
             $cli->getProgress()->clear();
 
             // See how long it took to run everything
-            $timing = $cli->getTimeElapsed();
+            $timing = Snapshots::getTimeElapsed();
 
             // Output and we're done!
             output(PHP_EOL."<info>Finished in</info> ${timing}");
-
         }
     )->descriptions('Installs all enterprise packages in the local ProcessMaker core (processmaker/processmaker) codebase.', [
             '--for_41_develop' => 'Uses 4.1 version of the supported packages',
@@ -749,4 +768,4 @@ if (!is_dir(PM_HOME_PATH)) {
     ]);
 }
 
-return $app->run();
+$app->run();
