@@ -37,7 +37,7 @@ class Core
 
         // Make sure we re-add the IDE settings
         // in case of a premature shutdown
-        register_shutdown_function(static function () use ($ide) {
+        register_shutdown_function(function () use ($ide) {
             if (is_string($ide) && FileSystem::exists($ide)) {
                 IDE::moveConfigurationBack($ide);
             }

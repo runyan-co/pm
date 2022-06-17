@@ -2,9 +2,9 @@
 
 namespace ProcessMaker\Cli;
 
-use Silly\Application as BaseApplication;
+use Silly\Application as SillyApplication;
 
-class Application extends BaseApplication
+class Application extends SillyApplication
 {
     //
 }

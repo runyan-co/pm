@@ -40,9 +40,11 @@ use function ProcessMaker\Cli\table;
 use function ProcessMaker\Cli\warning;
 use function ProcessMaker\Cli\warning_then_exit;
 
-Container::setInstance(new Container());
+Container::setInstance($container = new Container);
 
 $app = new Application('ProcessMaker CLI Tool', '1.1.5');
+
+$app->useContainer($container);
 
 /*
  * -------------------------------------------------+
@@ -111,7 +113,7 @@ if (!is_dir(PM_HOME_PATH)) {
 
         // Callback to autocomplete the directories available
         // as the user is typing
-        $filesystem_callback = function (string $userInput): array {
+        $filesystem_callback = static function (string $userInput): array {
             $inputPath = preg_replace('%(/|^)[^/]*$%', '$1', $userInput);
             $inputPath = $inputPath === '' ? '.' : $inputPath;
             $foundFilesAndDirs = @scandir($inputPath) ?: [];
@@ -395,6 +397,13 @@ if (!is_dir(PM_HOME_PATH)) {
 			// Install processmaker/processmaker
 			Core::clone();
 
+			// If --no-npm was passed, then we need to inform the user
+	        // they need to restart supervisor once the npm assets are
+	        // installed so the echo server can function properly
+	        if ($no_npm && Core::getInstance()::$shouldRestartSupervisor) {
+                Core::getInstance()::$shouldRestartSupervisor = false;
+	        }
+
             // Iterate through them and execute
             foreach ($command_set as $type_of_commands => $commands) {
                 $cli->getProgress()->setMessage("Running ${type_of_commands} commands...");
@@ -437,12 +446,19 @@ if (!is_dir(PM_HOME_PATH)) {
 
             // If supervisor processes were stopped before
             // executing the commands, now we can restart them
-            if (Core::getInstance()::$shouldRestartSupervisor) {
+            if (!$no_npm && Core::getInstance()::$shouldRestartSupervisor) {
                 $cli->getProgress()->setMessage('Restarting supervisor processes...');
                 $cli->getProgress()->advance();
 
                 Supervisor::restart();
             }
+
+			if ($no_npm) {
+				output(PHP_EOL.PHP_EOL."<comment>Important:</comment>");
+				output("<comment>|---</comment> Since the --no-npm option was passed, the supervisor processes ".PHP_EOL.
+					"<comment>|---</comment> need to be manually restarted (to make sure the echo server ".PHP_EOL.
+					"<comment>|---</comment> doesn't throw an exception)");
+			}
 
             $cli->getProgress()->finish();
             $cli->getProgress()->clear();
@@ -454,10 +470,10 @@ if (!is_dir(PM_HOME_PATH)) {
             output(PHP_EOL."<info>Finished in</info> ${timing}");
         }
     )->descriptions('Reset the core codebase, install composer and npm dependencies, builds npm assets', [
-            'branch' => 'Default: \'develop\'. Otherwise will try to switch to the branch name provided.',
-            '--bounce-database' => 'Drop and recreate new database',
-            '--no-npm' => 'Skip npm commands',
-        ]);
+		'branch' => 'Default: \'develop\'. Otherwise will try to switch to the branch name provided.',
+		'--bounce-database' => 'Drop and recreate new database',
+		'--no-npm' => 'Skip npm commands',
+	]);
 
     /*
      * -------------------------------------------------+
@@ -537,7 +553,7 @@ if (!is_dir(PM_HOME_PATH)) {
             // The steps increase by 2, for example, if supervisor
             // is running since we need to stop it before executing
             // the commands, then restart it when were finished
-            if ($supervisor_should_restart = Supervisor::running()) {
+            if (Core::getInstance()::$shouldRestartSupervisor = Supervisor::running()) {
                 $steps += 2;
             }
 
@@ -549,7 +565,7 @@ if (!is_dir(PM_HOME_PATH)) {
             // First, let's stop any supervisor processes
             // to prevent them from throwing exceptions
             // or causing other chaos while we do the reset
-            if ($supervisor_should_restart) {
+            if (Core::getInstance()::$shouldRestartSupervisor) {
                 $cli->getProgress()->setMessage('Stopping supervisor processes...');
                 $cli->getProgress()->advance();
 
@@ -603,7 +619,7 @@ if (!is_dir(PM_HOME_PATH)) {
             }
 
             // Restart supervisor processes
-            if ($supervisor_should_restart) {
+            if (Core::getInstance()::$shouldRestartSupervisor) {
                 $cli->getProgress()->setMessage('Restarting supervisor processes...');
                 $cli->getProgress()->advance();
 
@@ -749,4 +765,4 @@ if (!is_dir(PM_HOME_PATH)) {
     ]);
 }
 
-return $app->run();
+$app->run();

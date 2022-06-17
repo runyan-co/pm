@@ -18,16 +18,6 @@ class CommandLine
     private $progress;
 
     /**
-     * Instruct the container to resolve a class instance as a singleton
-     *
-     * @return bool
-     */
-    public static function shouldBeSingleton(): bool
-    {
-        return false;
-    }
-
-    /**
      * Returns absolute path of an executable by name
      */
     public function findExecutable(string $executable_name): string
@@ -108,12 +98,15 @@ class CommandLine
             $process->setWorkingDirectory($workingDir);
         }
 
-        $process->setTimeout(null)->run(
-            function ($type, $line) use (&$processOutput): void {
-                $processOutput .= $line;
-            });
+        $snapshot_start_key = Snapshots::startSnapshot($command);
 
-        Snapshots::takeSnapshot($command);
+        $process->setTimeout(null)->run(
+            function ($type, $line) use (&$processOutput) {
+                $processOutput .= $line;
+            }
+        );
+
+        Snapshots::stopSnapshot($command, $snapshot_start_key);
 
         if ($process->getExitCode() > 0) {
             $onError($process->getExitCode(), $processOutput);

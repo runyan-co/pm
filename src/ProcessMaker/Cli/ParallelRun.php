@@ -317,7 +317,6 @@ class ParallelRun
     private function setProcessIndexes(Collection $bundles): void
     {
         $index = 0;
-
         $total_processes = 0;
 
         // Count up all of the processes
