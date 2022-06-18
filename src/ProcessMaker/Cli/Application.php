@@ -11,23 +11,14 @@ use Symfony\Component\Console\Input\InputOption as InputOptionAlias;
 
 class Application extends SillyApplication
 {
+    /**
+     * @inheritdoc
+     */
     protected function getDefaultInputDefinition(): object
     {
         return tap(parent::getDefaultInputDefinition(), function ($definition) {
             $definition->addOption($this->getTimingOption());
         });
-    }
-
-    /**
-     * Generate an instance of the -t|--timing input option
-     *
-     * @return \Silly\Input\InputOption
-     */
-    protected function getTimingOption(): InputOption
-    {
-        $description = 'Record timing for all commands run and display them as a table when the command is finished';
-
-        return new InputOption('timing', 't', InputOptionAlias::VALUE_NONE, $description);
     }
 
     /**
@@ -40,5 +31,17 @@ class Application extends SillyApplication
         }
 
         return parent::doRun($input, $output);
+    }
+
+    /**
+     * Generate an instance of the -t|--timing input option
+     *
+     * @return \Silly\Input\InputOption
+     */
+    protected function getTimingOption(): InputOption
+    {
+        $description = 'Record timing for all commands run and display them as a table when the command is finished';
+
+        return new InputOption('timing', 't', InputOptionAlias::VALUE_NONE, $description);
     }
 }
