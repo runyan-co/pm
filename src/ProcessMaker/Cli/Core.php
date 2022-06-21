@@ -17,6 +17,11 @@ class Core
     public static $shouldRestartSupervisor = false;
 
     /**
+     * @var null|string
+     */
+    private static $tempIdeConfigurationPath;
+
+    /**
      * Clone down the most recent version of processmaker/processmaker
      *
      * @return void
@@ -24,8 +29,8 @@ class Core
     public function clone()
     {
         // Save any IDE config files
-        if ($ide = IDE::hasConfiguration()) {
-            IDE::temporarilyMoveConfiguration();
+        if (IDE::hasConfiguration()) {
+            self::$tempIdeConfigurationPath = IDE::temporarilyMoveConfiguration();
         }
 
         // The steps increase by 2, for example, if supervisor
@@ -35,23 +40,29 @@ class Core
             Supervisor::stop();
         }
 
-        // Make sure we re-add the IDE settings
-        // in case of a premature shutdown
-        register_shutdown_function(function () use ($ide) {
-            if (is_string($ide) && FileSystem::exists($ide)) {
-                IDE::moveConfigurationBack($ide);
-            }
-        });
-
         // Remove old codebase
         FileSystem::rmdir($codebase = codebase_path());
 
         // Clone a fresh copy
         Git::clone('processmaker', Str::replaceLast('processmaker', '', $codebase));
 
-        // Re-add the IDE settings (if they existed to begin with)
-        if ($ide) {
+        // Restore the IDE settings
+        self::restoreIdeConfiguration();
+    }
+
+    /**
+     * Restores the IDE configuration if one is available to restore
+     *
+     * @return void
+     */
+    public static function restoreIdeConfiguration(): void
+    {
+        // Make sure we re-add the IDE settings
+        // in case of a premature shutdown
+        if (is_string($ide = self::$tempIdeConfigurationPath) && FileSystem::exists($ide)) {
             IDE::moveConfigurationBack($ide);
+
+            self::$tempIdeConfigurationPath = null;
         }
     }
 

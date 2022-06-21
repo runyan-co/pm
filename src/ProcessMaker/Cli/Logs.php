@@ -14,12 +14,20 @@ class Logs
      */
     public function getApplicationLogs(): array
     {
-        $log_directory_files = FileSystem::scandir(
-            codebase_path('storage/logs')
-        );
+        if (!FileSystem::exists($logs_directory = codebase_path('storage/logs'))) {
+            throw new \RuntimeException('Logs directory not found');
+        }
 
-        return array_values(array_filter($log_directory_files, static function ($path) {
+        $log_directory_files = FileSystem::scandir($logs_directory);
+
+        $log_files = array_values(array_filter($log_directory_files, static function ($path) {
             return Str::endsWith($path, '.log');
         }));
+
+        if (blank($log_files)) {
+            throw new \RuntimeException('No log files found');
+        }
+
+        return $log_files;
     }
 }

@@ -23,7 +23,7 @@ class FileSystem
     public function mv(string $from_path, string $to_path): bool
     {
         try {
-            Cli::run("mv ${from_path} ${to_path}", static function ($error, $output): void {
+            Cli::run("mv -f ${from_path} ${to_path}", static function ($error, $output): void {
                 throw new RuntimeException($output);
             });
 

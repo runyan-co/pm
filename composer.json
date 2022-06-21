@@ -16,6 +16,7 @@
         "php": ">=7.2",
         "ext-json": "*",
         "ext-posix": "*",
+        "ext-pcntl": "*",
         "illuminate/support": "^8.83",
         "illuminate/container": "^8.83",
         "mnapoli/silly": "^1.7",

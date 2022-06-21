@@ -33,17 +33,18 @@ abstract class Facade
     /**
      * Get an/the instance of a given class from the container
      *
-     * @return object
+     * @param  mixed  ...$parameters
      *
+     * @return object
      * @throws \Illuminate\Contracts\Container\BindingResolutionException
      */
-    public static function getInstance(): object
+    public static function getInstance(...$parameters): object
     {
         if (static::shouldBeSingleton()) {
             Container::getInstance()->singletonIf(static::containerKey());
         }
 
-        return Container::getInstance()->make(static::containerKey());
+        return Container::getInstance()->make(static::containerKey(), $parameters);
     }
 
     /**
