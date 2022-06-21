@@ -3,19 +3,9 @@
 
 declare(strict_types=1);
 
-define('MICROTIME_START', microtime(true));
+$app = require __DIR__.'/../includes/bootstrap.php';
 
-if (file_exists(__DIR__.'/../vendor/autoload.php')) {
-    require __DIR__.'/../vendor/autoload.php';
-} elseif (file_exists(__DIR__.'/../../../autoload.php')) {
-    require __DIR__.'/../../../autoload.php';
-} else {
-    require getenv('HOME').'/.composer/vendor/autoload.php';
-}
-
-use Illuminate\Container\Container;
 use Illuminate\Support\Str;
-use ProcessMaker\Cli\Application;
 use ProcessMaker\Cli\Facades\Core;
 use ProcessMaker\Cli\Facades\CommandLine;
 use ProcessMaker\Cli\Facades\Environment;
@@ -34,19 +24,13 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Question\ChoiceQuestion;
 use Symfony\Component\Console\Question\ConfirmationQuestion;
 use Symfony\Component\Console\Question\Question;
-use function ProcessMaker\Cli\resolve;
+
 use function ProcessMaker\Cli\codebase_path;
 use function ProcessMaker\Cli\info;
 use function ProcessMaker\Cli\output;
 use function ProcessMaker\Cli\table;
 use function ProcessMaker\Cli\warning;
 use function ProcessMaker\Cli\warning_then_exit;
-
-Container::setInstance($container = new Container);
-
-$app = new Application('ProcessMaker CLI Tool', '1.1.6');
-
-$app->useContainer($container);
 
 /*
  * -------------------------------------------------+
@@ -225,9 +209,13 @@ if (!is_dir(PM_HOME_PATH)) {
 
         $helper = $this->getHelperSet()->get('question');
 
-        $question = new ChoiceQuestion('<comment>Please select the log file to view:</comment>',
-            Logs::getApplicationLogs()
-        );
+		try {
+			$logs = Logs::getApplicationLogs();
+		} catch (RuntimeException $exception) {
+			warning_then_exit($exception->getMessage());
+		}
+
+        $question = new ChoiceQuestion('<comment>Please select the log file to view:</comment>', $logs);
 
         $selected_log_file = $helper->ask($input, $output, $question);
         $selected_log_file = codebase_path("storage/logs/{$selected_log_file}");

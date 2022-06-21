@@ -42,7 +42,7 @@ class SnapshotsRepository
      */
     public function isEnabled(): bool
     {
-        return static::$display;
+        return true === static::$display;
     }
 
     /**
@@ -85,6 +85,7 @@ class SnapshotsRepository
         // Add a table separator and then the total time
         // taken to run all commands cumulatively
         $snapshots[] = new TableSeparator();
+
         $snapshots[] = (object) [
             'value' => '(all)',
             'time' => $this->getTimeElapsed(),
@@ -92,7 +93,9 @@ class SnapshotsRepository
             'time_in_milliseconds' => $this->getMillisecondsElapsed(),
         ];
 
-        $rows = array_map(static function ($row) {
+        $total_time_in_milliseconds = $this->getMillisecondsElapsed();
+
+        $rows = array_map(static function ($row) use ($total_time_in_milliseconds) {
             if ($row instanceof TableSeparator) {
                 return $row;
             }
@@ -109,13 +112,20 @@ class SnapshotsRepository
                 $style = 'fg=red';
             }
 
+            $percent_total = round(($row->time_in_milliseconds / $total_time_in_milliseconds) * 100, 2);
+
+            if ($percent_total < 1.00) {
+                $percent_total = "< 1";
+            }
+
             return [
                 'command' => $row->value,
                 'time' => "<{$style}>{$time}</> or <{$style}>{$row->time_in_milliseconds}ms</>",
+                'percent_of_time_total' => "{$percent_total}%",
             ];
         }, $snapshots);
 
-        table(['Command', 'Timing'], $rows);
+        table(['Command', 'Timing', 'Percent of Total'], $rows);
     }
 
     /**

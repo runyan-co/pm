@@ -3,14 +3,31 @@
 namespace ProcessMaker\Cli;
 
 use Silly\Input\InputOption;
-use Silly\Application as SillyApplication;
+use Illuminate\Container\Container;
+use ProcessMaker\Cli\Facades\Core;
 use ProcessMaker\Cli\Facades\SnapshotsRepository;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Input\InputOption as InputOptionAlias;
 
-class Application extends SillyApplication
+class Application extends \Silly\Application
 {
+    public function __construct($name = 'ProcessMaker Cli Tool', $version = 'UNKNOWN')
+    {
+        parent::__construct($name, $version);
+
+        if (!$this->getContainer()) {
+            $this->useContainer(Container::getInstance());
+        }
+
+        // Register signal handlers for cleanup
+        foreach ([SIGINT, SIGTERM] as $signal) {
+            $this->getSignalRegistry()->register($signal, static function () {
+                Core::restoreIdeConfiguration();
+            });
+        }
+    }
+
     /**
      * @inheritdoc
      */

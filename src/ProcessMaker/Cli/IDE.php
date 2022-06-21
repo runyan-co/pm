@@ -89,14 +89,18 @@ class IDE
 
         // Create the tmp/ directory if it doesn't exist
         if (!FileSystem::exists($tmp_path = pm_path(self::$tmp))) {
-             FileSystem::mkdir($tmp_path);
+            FileSystem::mkdir($tmp_path);
+        }
+
+        // Remove any pre-existing project configuration
+        // files in the temporary directory
+        if (FileSystem::exists($move_to_path = "{$tmp_path}/{$basename}")) {
+            FileSystem::rmdir($move_to_path);
         }
 
         // Create the project-specific directory name within the tmp
         // directory (in case we have other config files present)
-        if (!FileSystem::exists($move_to_path = "{$tmp_path}/{$basename}")) {
-             FileSystem::mkdir($move_to_path);
-        }
+        FileSystem::mkdir($move_to_path);
 
         // Move the config files to the tmp directory and return it
         if (FileSystem::mv($path, $move_to_path)) {
