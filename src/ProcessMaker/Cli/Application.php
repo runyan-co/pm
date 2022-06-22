@@ -22,8 +22,12 @@ class Application extends \Silly\Application
 
         // Register signal handlers for cleanup
         foreach ([SIGINT, SIGTERM] as $signal) {
-            $this->getSignalRegistry()->register($signal, static function () {
-                Core::restoreIdeConfiguration();
+            $this->getSignalRegistry()->register($signal, static function ($signal, $hasNext) {
+                if (!$hasNext) {
+                    Core::restoreIdeConfiguration();
+
+                    exit(0);
+                }
             });
         }
     }

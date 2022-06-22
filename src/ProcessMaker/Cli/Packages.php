@@ -91,16 +91,17 @@ class Packages
      *
      * @return array
      */
-    public function getSupportedPackages(bool $enterpriseOnly = false, ?string $branch = null): array
+    public function getSupportedPackages(bool $enterpriseOnly = false, string $branch = null): array
     {
-        $is41 = ($branch === '4.1-develop');
+        $is41 = '4.1-develop' === $branch;
 
-        if (!$this->packageExists('packages')) {
+        if ($is41 && !$this->packageExists('packages')) {
             $this->clonePackage('packages');
         }
 
-        if (!$is41 && (!Core::isCloned() || !Core::is42())) {
-            Core::clone();
+        if ($is41 && !Core::is41() && !Core::isNot41Or42()) {
+            throw new RuntimeException('To correctly get the list of supported enterprise packages, 
+            processmaker/processmaker should be on version 4.1.*. Please switch branches and try again.');
         }
 
         // We need the packages meta-package for version 4.1 to get the list of supported enterprise
@@ -113,9 +114,14 @@ class Packages
             $path_to_repo = codebase_path();
         }
 
-        // Make sure we're on the right branch
+        // Set the default to develop (which is 4.2.*)
         $branch = $branch ?? Git::getDefaultBranch($path_to_repo);
-        $branchSwitchResult = Git::switchBranch($branch, $path_to_repo);
+        $current = Git::getCurrentBranchName(codebase_path());
+
+        // Make sure we're on the right branch
+        if ($branch !== $current) {
+            $branchSwitchResult = Git::switchBranch($branch, $path_to_repo);
+        }
 
         // Find and decode composer.json
         $composer_json = Composer::getComposerJson($path_to_repo);
@@ -246,7 +252,9 @@ class Packages
             $package_directory = packages_path();
         }
 
-        return array_filter(FileSystem::scandir($package_directory), function ($dir) use ($package_directory) {
+        return array_filter(FileSystem::scandir($package_directory),
+            static function ($dir) use ($package_directory) {
+
             // Set the absolute path to the file or directory
             $dir = $package_directory.'/'.$dir;
 
@@ -392,21 +400,17 @@ class Packages
      * Build the stack of commands to composer require and
      * install each enterprise ProcessMaker\Cli 4 package
      */
-    public function buildPackageInstallCommands(bool $for_41_develop = false, bool $force = false): Collection
+    public function buildPackageInstallCommands(string $branch = 'develop', bool $force = false): Collection
     {
-        if (! FileSystem::is_dir(codebase_path())) {
+        if (!FileSystem::is_dir(codebase_path())) {
             throw new LogicException('Could not find processmaker codebase: '.codebase_path());
         }
-
-        // Find out which branch to switch to in the local
-        // processmaker/processmaker codebase
-        $branch = $for_41_develop ? '4.1-develop' : 'develop';
 
         // Find out which branch we're on
         $current_branch = Git::getCurrentBranchName(codebase_path());
 
         // Make sure we're on the right branch
-        if ($current_branch !== $branch && ! $force) {
+        if ($current_branch !== $branch && !$force) {
             throw new DomainException("Core codebase branch should be \"{$branch}\" but \"{$current_branch}\" was found.");
         }
 
@@ -422,7 +426,6 @@ class Packages
 
         // Build the stack of commands to run
         return $enterprise_packages->transform(function (string $package) use ($composer) {
-
             $artisan_install_command = PHP_BINARY." artisan ${package}:install --no-interaction";
 
             // Concatenate API keys for packages which require them
@@ -439,6 +442,6 @@ class Packages
                 $artisan_install_command,
                 PHP_BINARY." artisan vendor:publish --tag={$package} --no-interaction",
             ]);
-        })->put('horizon', new Collection([PHP_BINARY.' artisan horizon:terminate']));
+        })->put('horizon', Collection::make([PHP_BINARY.' artisan horizon:terminate']));
     }
 }

@@ -296,8 +296,10 @@ if (!is_dir(PM_HOME_PATH)) {
 		// command to make it easier
 		$command = static function ($command) use ($input) {
 			// core:reset command options/arguments
+            $branch = $input->getArgument('branch') ?? 'develop';
+
 			if (Str::contains($command, 'core:reset')) {
-                if ($branch = $input->getArgument('branch') ?? 'develop') {
+                if ($branch) {
                     $command .= " {$branch}";
                 }
 
@@ -324,8 +326,12 @@ if (!is_dir(PM_HOME_PATH)) {
 					$command .= ' -4';
 				}
 
+				if ($branch) {
+					$command .= " --branch={$branch}";
+				}
+
                 if ($except_packages = $input->getOption('except')) {
-                    $command .= " --except {$except_packages}";
+                    $command .= " --except={$except_packages}";
                 }
             }
 
@@ -380,7 +386,7 @@ if (!is_dir(PM_HOME_PATH)) {
             }
 
             // Count up the total number of steps in the reset process
-			$cli->createProgressBar((collect($command_set)->flatten()->count() - 1), 'message');
+			$cli->createProgressBar(count($command_set), 'message');
 
 			$cli->getProgress()->setMessage('Installing core...');
             $cli->getProgress()->start();
@@ -473,15 +479,17 @@ if (!is_dir(PM_HOME_PATH)) {
      * |                                                |
      * -------------------------------------------------+
      */
-    $app->command('core:install-packages [-4|--for_41_develop] [--except=]',
+    $app->command('core:install-packages [-4|--for_41_develop] [--except=] [--branch=]',
         function (InputInterface $input, OutputInterface $output): void {
 
-            // Indicates if we should install the 4.1-develop
-            // versions of each package or the 4.2
-            $for_41_develop = $input->getOption('for_41_develop');
+            // Grab an instance of the CommandLine class
+            $cli = CommandLine::getInstance();
 
             // Should the output be verbose or not
             $verbose = $input->getOption('verbose');
+
+			// If provided, the branch core should be on
+			$branch = $input->getOption('branch');
 
 			// If the --except option is provided, attempt to remove
 	        // the package(s) from the packages to be installed
@@ -495,8 +503,8 @@ if (!is_dir(PM_HOME_PATH)) {
 
             // Use an anonymous function to we can easily re-run if
             // we decide to force the installation of the packages
-            $build_install_commands = static function ($force = false) use ($for_41_develop) {
-                return Packages::buildPackageInstallCommands($for_41_develop, $force);
+            $build_install_commands = static function ($force = false) use ($branch) {
+                return Packages::buildPackageInstallCommands($branch, $force);
             };
 
             // Builds an array of commands to run in the local
@@ -534,9 +542,6 @@ if (!is_dir(PM_HOME_PATH)) {
 					}
 				}
 	        }
-
-            // Grab an instance of the CommandLine class
-            $cli = CommandLine::getInstance();
 
             // Count up the total number of steps
             $steps = $install_commands->flatten()->count();
@@ -630,6 +635,7 @@ if (!is_dir(PM_HOME_PATH)) {
     )->descriptions('Installs all enterprise packages in the local ProcessMaker core (processmaker/processmaker) codebase.', [
             '--for_41_develop' => 'Uses 4.1 version of the supported packages',
 	        '--except' => 'A comma-seperated list of enterprise packages to exclude from installation',
+	        '--branch' => 'If provided, the branch processmaker/processmaker should be on'
         ]);
 
     /*

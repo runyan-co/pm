@@ -67,6 +67,16 @@ class Core
     }
 
     /**
+     * processmaker/processmaker is on different branch (not 4.1.* or 4.2.*)
+     *
+     * @return bool
+     */
+    public function isNot41Or42()
+    {
+        return ! $this->is41() && ! $this->is42();
+    }
+
+    /**
      * Local copy of processmaker/processmaker is version 4.1.*
      *
      * @return bool
