@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace ProcessMaker\Cli;
 
 use Silly\Input\InputOption;
@@ -20,7 +22,16 @@ class Application extends \Silly\Application
             $this->useContainer(Container::getInstance());
         }
 
-        // Register signal handlers for cleanup
+        $this->registerSignals();
+    }
+
+    /**
+     * Register signal handlers for cleanup
+     *
+     * @return void
+     */
+    protected function registerSignals(): void
+    {
         foreach ([SIGINT, SIGTERM] as $signal) {
             $this->getSignalRegistry()->register($signal, static function ($signal, $hasNext) {
                 if (!$hasNext) {

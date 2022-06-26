@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace ProcessMaker\Cli;
 
-use Illuminate\Support\Str;
 use ProcessMaker\Cli\Facades\SnapshotsRepository as Snapshots;
 use Symfony\Component\Console\Helper\ProgressBar;
 use Symfony\Component\Console\Output\ConsoleOutput;
+use Symfony\Component\Process\ExecutableFinder;
 use Symfony\Component\Process\Process;
 
 class CommandLine
@@ -22,7 +22,7 @@ class CommandLine
      */
     public function findExecutable(string $executable_name): string
     {
-        return Str::replace([PHP_EOL, "\n"], '', $this->run("which {$executable_name}"));
+        return (new ExecutableFinder())->find($executable_name);
     }
 
     /**

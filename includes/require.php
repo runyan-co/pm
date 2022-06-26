@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 // We only want to require the other include files when
 // the SOURCE env variable is defined...
 if (!($source = getenv('SOURCE'))) {
