@@ -32,12 +32,16 @@ class Application extends \Silly\Application
      */
     protected function registerSignals(): void
     {
+        if (!\function_exists('pcntl_signal')) {
+            return;
+        }
+
         foreach ([SIGINT, SIGTERM] as $signal) {
             $this->getSignalRegistry()->register($signal, static function ($signal, $hasNext) {
                 if (!$hasNext) {
                     Core::restoreIdeConfiguration();
 
-                    exit(0);
+                    exit($signal);
                 }
             });
         }
