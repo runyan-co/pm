@@ -50,8 +50,8 @@ class Reset
      * @var array
      */
     protected static $npmCommands = [
-        'npm clean-install --non-interactive --quiet',
-        'npm run dev --non-interactive --quiet',
+        'npm clean-install --no-audit --non-interactive --quiet',
+        'npm run dev --no-audit --non-interactive --quiet',
     ];
 
     /**

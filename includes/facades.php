@@ -144,3 +144,8 @@ class Core extends Facade {}
  * @see \ProcessMaker\Cli\SnapshotsRepository
  */
 class SnapshotsRepository extends Facade {}
+
+/**
+ * @see \ProcessMaker\Cli\Docker
+ */
+class Docker extends Facade {}

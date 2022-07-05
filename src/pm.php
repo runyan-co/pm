@@ -8,6 +8,7 @@ $app = require __DIR__.'/../includes/bootstrap.php';
 use Illuminate\Support\Str;
 use ProcessMaker\Cli\Facades\Core;
 use ProcessMaker\Cli\Facades\CommandLine;
+use ProcessMaker\Cli\Facades\Docker;
 use ProcessMaker\Cli\Facades\Environment;
 use ProcessMaker\Cli\Facades\FileSystem;
 use ProcessMaker\Cli\Facades\Logs;
@@ -490,6 +491,7 @@ if (!is_dir(PM_HOME_PATH)) {
 
 			// If provided, the branch core should be on
 			$branch = $input->getOption('branch');
+			$branch = $branch ?: 'develop';
 
 			// If the --except option is provided, attempt to remove
 	        // the package(s) from the packages to be installed
