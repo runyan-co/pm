@@ -32,6 +32,17 @@ class Packages
     public static $bpmnPackages = ['pmql', 'nayra'];
 
     /**
+     * processmaker/processmaker ^4.1.* compatible packages
+     *
+     * @var array
+     */
+    public static $fourPointOneOnlyPackages = [
+        'package-advancedforms',
+        'package-auth-auth0',
+        'package-auth-saml',
+    ];
+
+    /**
      * Complete list of packages for the docker-based script executors
      *
      * @var array
@@ -174,19 +185,23 @@ processmaker/processmaker should be on version 4.1.*. Please switch branches and
     {
         $name = Str::replace('processmaker/', '', $name);
 
-        if (! $force && $this->packageExists($name)) {
+        if (!$force && $this->packageExists($name)) {
             throw new LogicException("Package already exists: processmaker/{$name}");
         }
 
         if ($force) {
-            FileSystem::rmdir(Config::packagesPath()."/{$name}");
+            FileSystem::rmdir(packages_path($name));
         }
 
         $command = "git clone https://github.com/processmaker/{$name}";
 
+        if (in_array($name, static::$fourPointOneOnlyPackages, true)) {
+            $command .= " && cd ".packages_path($name)." && git checkout 4.1-develop";
+        }
+
         Cli::run($command, function ($code, $out) use ($name): void {
             throw new RuntimeException("Failed to clone {$name}: ".PHP_EOL.$out);
-        }, Config::packagesPath());
+        }, packages_path());
 
         return $this->packageExists($name);
     }
@@ -213,8 +228,10 @@ processmaker/processmaker should be on version 4.1.*. Please switch branches and
         // Clone down all 4.2 and 4.1 packages
         $packages = array_merge(
             $this->getSupportedPackages(),
-            $this->getSupportedPackages(true, '4.1-develop')
+            static::$fourPointOneOnlyPackages
         );
+
+        asort($packages);
 
         foreach ($packages as $index => $package) {
             try {
