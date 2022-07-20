@@ -87,17 +87,25 @@ class Git
         $this->validateGitRepository($path);
 
         if ($force) {
-            Cli::run('git reset --hard', null, $path);
+            Cli::run('git restore .', null, $path);
             Cli::run('git clean -d -f .', null, $path);
         }
 
-        $switched = Cli::run("git checkout ${branchName}", function ($e, $o): void {
-            throw new RuntimeException('Failed to switch branch');
+        $switched = Cli::run("git checkout {$branchName}", function ($exit, $output): void {
+            throw new RuntimeException($output);
         }, $path);
 
         return Str::replace([PHP_EOL, "\n"], '', $switched);
     }
 
+    /**
+     * Clone a processmaker package using git
+     *
+     * @param  string  $package
+     * @param  string  $path
+     *
+     * @return void
+     */
     public function clone(string $package, string $path): void
     {
         $cmd = static function (string $repository) {
@@ -106,7 +114,7 @@ class Git
                 : "git clone https://github.com/processmaker/${repository}";
         };
 
-        Cli::runCommand($cmd($package), function ($code, $output): void {
+        Cli::run($cmd($package), function ($code, $output): void {
             throw new RuntimeException($output);
         }, $path);
     }

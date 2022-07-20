@@ -101,7 +101,7 @@ class Packages
 
         if ($is41 && !Core::is41() && !Core::isNot41Or42()) {
             throw new RuntimeException('To correctly get the list of supported enterprise packages, 
-            processmaker/processmaker should be on version 4.1.*. Please switch branches and try again.');
+processmaker/processmaker should be on version 4.1.*. Please switch branches and try again.');
         }
 
         // We need the packages meta-package for version 4.1 to get the list of supported enterprise
@@ -184,7 +184,7 @@ class Packages
 
         $command = "git clone https://github.com/processmaker/{$name}";
 
-        $output = Cli::run($command, function ($code, $out) use ($name): void {
+        Cli::run($command, function ($code, $out) use ($name): void {
             throw new RuntimeException("Failed to clone {$name}: ".PHP_EOL.$out);
         }, Config::packagesPath());
 
@@ -200,11 +200,13 @@ class Packages
      */
     public function cloneAllPackages(bool $force = false): void
     {
-        // Clear the ProcessMaker\Cli packages directory before
+        // Clear the processmaker packages directory before
         // we start cloning the new ones down
         if ($force) {
             foreach ($this->getPackages() as $package) {
-                FileSystem::rmdir($package['path']);
+                if (FileSystem::exists($path = $package['path'])) {
+                    FileSystem::rmdir($path);
+                }
             }
         }
 
