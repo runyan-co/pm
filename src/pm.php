@@ -202,6 +202,31 @@ if (!is_dir(PM_HOME_PATH)) {
     /*
 	 * -------------------------------------------------+
 	 * |                                                |
+	 * |    Command: logs:clear                         |
+	 * |                                                |
+	 * -------------------------------------------------+
+	 */
+    $app->command('logs:clear', function (InputInterface $input, OutputInterface $output) {
+		if (blank($log_files = Logs::all())) {
+			output("<comment>No log files found</comment>");
+		}
+
+		foreach ($log_files as $log_file_path) {
+			if (FileSystem::exists($log_file_path)) {
+				try {
+					FileSystem::unlink($log_file_path);
+				} catch (Throwable $exception) {
+					continue;
+				}
+			}
+		}
+
+		info('Logs successfully clear');
+    })->descriptions('Clear application logs and empty system log files');
+
+    /*
+	 * -------------------------------------------------+
+	 * |                                                |
 	 * |    Command: logs:tail                          |
 	 * |                                                |
 	 * -------------------------------------------------+

@@ -14,7 +14,6 @@ class Config
      * @var array
      */
     public static $defaults = [
-
         'packages_path' => [
             'description' => 'Absolute path to the directory containing all local copies of enterprise composer packages',
             'default' => '',
@@ -94,6 +93,11 @@ class Config
             'description' => 'Redis host default',
             'default' => '127.0.0.1',
         ],
+
+        'log_path' => [
+            'description' => 'Path to the user logs directory',
+            'default' => HOMEBREW_PREFIX.'/var/log',
+        ],
     ];
 
     /**
@@ -122,6 +126,18 @@ class Config
         if (!$path) {
             $path = Install::read('codebase_path');
         }
+
+        return $file_name ? "${path}/${file_name}" : $path;
+    }
+
+    /**
+     * @param  string|null  $file_name
+     *
+     * @return array|false|mixed|string
+     */
+    public function systemLogsPath(?string $file_name = null)
+    {
+        $path = Install::read('log_path');
 
         return $file_name ? "${path}/${file_name}" : $path;
     }
