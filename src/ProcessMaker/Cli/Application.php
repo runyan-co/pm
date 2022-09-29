@@ -14,6 +14,15 @@ use Symfony\Component\Console\Input\InputOption as InputOptionAlias;
 
 class Application extends \Silly\Application
 {
+    /**
+     * @var bool
+     */
+    private static $verbose = false;
+
+    /**
+     * @param $name
+     * @param $version
+     */
     public function __construct($name = 'ProcessMaker Cli Tool', $version = 'UNKNOWN')
     {
         parent::__construct($name, $version);
@@ -66,7 +75,19 @@ class Application extends \Silly\Application
             SnapshotsRepository::enable();
         }
 
+        if ($input->hasParameterOption(['--verbose', '-v', '-vv', '-vvv'], true)) {
+            static::$verbose = true;
+        }
+
         return parent::doRun($input, $output);
+    }
+
+    /**
+     * @return bool
+     */
+    public function isVerbose(): bool
+    {
+        return static::$verbose === true;
     }
 
     /**

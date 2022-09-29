@@ -103,15 +103,18 @@ class Git
      *
      * @param  string  $package
      * @param  string  $path
+     * @param  string|null  $name
      *
      * @return void
      */
-    public function clone(string $package, string $path): void
+    public function clone(string $package, string $path, string $name = null): void
     {
-        $cmd = static function (string $repository) {
-            return is_string($token = getenv('GITHUB_TOKEN'))
-                ? "git clone https://${token}@github.com/processmaker/${repository}"
-                : "git clone https://github.com/processmaker/${repository}";
+        $cmd = static function (string $repository) use ($name) {
+            $command = is_string($token = getenv('GITHUB_TOKEN'))
+                ? "git clone https://${token}@github.com/ProcessMaker/${repository}"
+                : "git clone https://github.com/ProcessMaker/${repository}";
+
+            return $name ? "{$command} {$name}" : $command;
         };
 
         Cli::run($cmd($package), function ($code, $output): void {

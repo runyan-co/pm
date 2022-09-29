@@ -59,6 +59,15 @@ function packages_path(?string $package_name = null) {
 }
 
 /**
+ * @param  string|null  $log_file_name
+ *
+ * @return mixed
+ */
+function logs_path(?string $log_file_name = null) {
+    return Config::systemLogsPath($log_file_name);
+}
+
+/**
  * Resolve the given class from the container.
  *
  * @return mixed
