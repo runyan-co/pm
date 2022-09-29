@@ -46,7 +46,10 @@ class Core
         FileSystem::rmdir($codebase = codebase_path());
 
         // Clone a fresh copy
-        Git::clone('processmaker', Str::replaceLast('processmaker', '', $codebase));
+        $name = Str::afterLast($codebase, '/');
+        $directory = Str::replaceLast($name, '', $codebase);
+
+        Git::clone('processmaker', $directory, $name);
 
         // Restore the IDE settings
         self::restoreIdeConfiguration();

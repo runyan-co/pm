@@ -6,6 +6,7 @@ declare(strict_types=1);
 $app = require __DIR__.'/../includes/bootstrap.php';
 
 use Illuminate\Support\Str;
+use ProcessMaker\Cli\Facades\Git;
 use ProcessMaker\Cli\Facades\Core;
 use ProcessMaker\Cli\Facades\CommandLine;
 use ProcessMaker\Cli\Facades\Docker;
@@ -32,6 +33,7 @@ use function ProcessMaker\Cli\output;
 use function ProcessMaker\Cli\table;
 use function ProcessMaker\Cli\warning;
 use function ProcessMaker\Cli\warning_then_exit;
+use function ProcessMaker\Cli\packages_path;
 
 /*
  * -------------------------------------------------+
@@ -314,7 +316,7 @@ if (!is_dir(PM_HOME_PATH)) {
 	* |                                                |
 	* -------------------------------------------------+
 	*/
-    $app->command('core:both [branch] [-4|--for_41_develop] [-d|--bounce-database] [--no-npm] [-y|--yes] [--except=]',
+    $app->command('core:both [branch] [-4|--for_41_develop] [-d|--bounce-database] [--no-npm] [-y|--yes] [-w|--without-packages=] [-s|--skip-version-updates=]',
         function (InputInterface $input, OutputInterface $output) use ($app): void {
 
 		// This command (core:both) basically just let's us run both the
@@ -356,8 +358,12 @@ if (!is_dir(PM_HOME_PATH)) {
 					$command .= " --branch={$branch}";
 				}
 
-                if ($except_packages = $input->getOption('except')) {
-                    $command .= " --except={$except_packages}";
+                if ($except_packages = $input->getOption('without-packages')) {
+                    $command .= " --without-packages={$except_packages}";
+                }
+
+                if ($skip_version_updates_for = $input->getOption('skip-version-updates')) {
+                    $command .= " --skip-version-updates={$skip_version_updates_for}";
                 }
             }
 
@@ -505,8 +511,8 @@ if (!is_dir(PM_HOME_PATH)) {
      * |                                                |
      * -------------------------------------------------+
      */
-    $app->command('core:install-packages [-4|--for_41_develop] [--except=] [--branch=]',
-        function (InputInterface $input, OutputInterface $output): void {
+    $app->command('core:install-packages [-4|--for_41_develop] [-w|--without-packages=] [-s|--skip-version-updates=] [--branch=]',
+        function (InputInterface $input, OutputInterface $output) use ($app): void {
 
             // Grab an instance of the CommandLine class
             $cli = CommandLine::getInstance();
@@ -518,15 +524,25 @@ if (!is_dir(PM_HOME_PATH)) {
 			$branch = $input->getOption('branch');
 			$branch = $branch ?: 'develop';
 
-			// If the --except option is provided, attempt to remove
-	        // the package(s) from the packages to be installed
-			if ($except_packages = $input->getOption('except')) {
+			// If the --without-packages option is provided, attempt to
+	        // remove the package(s) from the packages to be installed
+			if ($except_packages = $input->getOption('without-packages')) {
 				$except_packages = Str::contains($except_packages, ',')
                     ? explode(',', $except_packages)
                     : [$except_packages];
 			}
 
 			info('Setting up enterprise package installation...');
+
+			// Check for packages we should skip version updates for
+            $skip = $input->getOption('skip-version-updates');
+			$append_to_skip_command = is_string($skip) ? " --skip={$skip}" : '';
+
+			// Switch the locally stored packages to the compatible
+	        // version for our version of processmaker/processmaker
+	        if ($app->runCommand("packages:update-versions{$append_to_skip_command}", $output) !== 0) {
+				warning_then_exit('Problem updating package versions');
+	        }
 
             // Use an anonymous function to we can easily re-run if
             // we decide to force the installation of the packages
@@ -537,7 +553,7 @@ if (!is_dir(PM_HOME_PATH)) {
             // Builds an array of commands to run in the local
             // processmaker/processmaker codebase to require
             // each supported package, then install it and
-            // publish it's vendor assets (if any are available)
+            // publish its vendor assets (if any are available)
             try {
                 $install_commands = $build_install_commands();
             } catch (DomainException $exception) {
@@ -661,7 +677,8 @@ if (!is_dir(PM_HOME_PATH)) {
         }
     )->descriptions('Installs all enterprise packages in the local ProcessMaker core (processmaker/processmaker) codebase.', [
             '--for_41_develop' => 'Uses 4.1 version of the supported packages',
-	        '--except' => 'A comma-seperated list of enterprise packages to exclude from installation',
+	        '--without-packages' => 'A comma-seperated list of enterprise packages to exclude from installation',
+			'--skip-version-updates' => '',
 	        '--branch' => 'If provided, the branch processmaker/processmaker should be on'
         ]);
 
@@ -677,6 +694,53 @@ if (!is_dir(PM_HOME_PATH)) {
         table(['Name', 'Version', 'Branch', 'Commit Hash'], Packages::getPackagesTableData());
 
     })->descriptions('Display the current version, branch, and names of known local packages');
+
+    /*
+	 * -------------------------------------------------+
+	 * |                                                |
+	 * |    Command: Packages:Update-Versions            |
+	 * |                                                |
+	 * -------------------------------------------------+
+	 */
+    $app->command('packages:update-versions [--no-output] [--skip=]', function (InputInterface $input, OutputInterface $output): void {
+
+		info('Updating local package versions...');
+
+        $should_output = false === $input->getOption('no-output');
+
+        $should_use_develop = Git::getCurrentBranchName(codebase_path()) === 'develop';
+
+        if ($skip = $input->getOption('skip')) {
+            $skip = Str::contains($skip, ',')
+                ? explode(',', $skip)
+                : [$skip];
+        }
+
+		$packages = Packages::getEnterprisePackages();
+
+		if ($skip) {
+			foreach ($skip as $package) {
+				unset($packages[$package]);
+			}
+		}
+
+		foreach ($packages as $package => $version) {
+			try {
+				$version = $should_use_develop ? 'develop' : "v{$version}";
+				$path = packages_path($package);
+				$result = Git::switchBranch($version, $path);
+
+                if ($should_output) {
+                    output("<comment>{$package}:</comment> successfully updated to <info>{$version}</info>");
+                }
+			} catch (Throwable $exception) {
+				if ($should_output) {
+                    warning("Switching Branch Failed: {$exception->getMessage()}");
+				}
+			}
+		}
+
+    })->descriptions('Update the local copies of packages to the version found in core\'s composer file');
 
     /*
      * -------------------------------------------------+

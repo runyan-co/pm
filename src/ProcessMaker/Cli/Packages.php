@@ -134,15 +134,8 @@ processmaker/processmaker should be on version 4.1.*. Please switch branches and
             $branchSwitchResult = Git::switchBranch($branch, $path_to_repo);
         }
 
-        // Find and decode composer.json
-        $composer_json = Composer::getComposerJson($path_to_repo);
-
-        try {
-            // We want just the package names for now
-            $supported_packages = array_keys(get_object_vars($composer_json->extra->processmaker->enterprise));
-        } catch (Exception $exception) {
-            throw new LogicException('Enterprise packages not found in composer.json');
-        }
+        // Get the list of enterprise packages from composer.json
+        $supported_packages = array_keys($this->getEnterprisePackages($path_to_repo));
 
         if (! $enterpriseOnly) {
             // Merge the supported enterprise package names with
@@ -151,7 +144,7 @@ processmaker/processmaker should be on version 4.1.*. Please switch branches and
             $supported_packages = array_merge($supported_packages ?? [], self::additionalPackages());
         }
 
-        // Sort it and and remove two packages so they can be
+        // Sort it and remove two packages, so they can be
         // prepended as other packages rely on them if the order
         // returned is the order installed
         $supported_packages = collect($supported_packages)->values()->sort()->reject(function ($package) {
@@ -176,6 +169,28 @@ processmaker/processmaker should be on version 4.1.*. Please switch branches and
     }
 
     /**
+     * @param  string|null  $path_to_repo
+     *
+     * @return array
+     */
+    public function getEnterprisePackages(string $path_to_repo = null)
+    {
+        if (blank($path_to_repo)) {
+            $path_to_repo = codebase_path();
+        }
+
+        // Find and decode composer.json
+        $composer_json = Composer::getComposerJson($path_to_repo);
+
+        try {
+            // We want just the package names for now
+            return get_object_vars($composer_json->extra->processmaker->enterprise);
+        } catch (Exception $exception) {
+            throw new LogicException('Enterprise packages not found in composer.json');
+        }
+    }
+
+    /**
      * @param  string  $name
      * @param  bool  $force
      *
@@ -193,7 +208,7 @@ processmaker/processmaker should be on version 4.1.*. Please switch branches and
             FileSystem::rmdir(packages_path($name));
         }
 
-        $command = "git clone https://github.com/processmaker/{$name}";
+        $command = "git clone https://github.com/ProcessMaker/{$name}";
 
         if (in_array($name, static::$fourPointOneOnlyPackages, true)) {
             $command .= " && cd ".packages_path($name)." && git checkout 4.1-develop";
