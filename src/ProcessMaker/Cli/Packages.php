@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace ProcessMaker\Cli;
 
+use Throwable;
 use DomainException, Exception, LogicException, RuntimeException;
 use ProcessMaker\Cli\Facades\CommandLine as Cli;
 use ProcessMaker\Cli\Facades\Composer;
-use ProcessMaker\Cli\Facades\Config;
 use ProcessMaker\Cli\Facades\Git;
 use ProcessMaker\Cli\Facades\Core;
 use ProcessMaker\Cli\Facades\FileSystem;
@@ -141,7 +141,7 @@ processmaker/processmaker should be on version 4.1.*. Please switch branches and
             // Merge the supported enterprise package names with
             // the handful of other packages required for the
             // primary (processmaker/processmaker) app to function
-            $supported_packages = array_merge($supported_packages ?? [], self::additionalPackages());
+            $supported_packages = array_merge($supported_packages ?? [], static::additionalPackages());
         }
 
         // Sort it and remove two packages, so they can be
@@ -183,10 +183,26 @@ processmaker/processmaker should be on version 4.1.*. Please switch branches and
         $composer_json = Composer::getComposerJson($path_to_repo);
 
         try {
+            // TODO check for 4.1
+            if (strpos($composer_json->version, '4.1') === 0) {
+                // Switch to correct version
+                Git::switchBranch('0.0.1-RC1', $packages_path = packages_path('packages'));
+                // Grab the enterprise package versions list
+                $composer_json = Composer::getComposerJson($packages_path);
+            }
+
+            $packages = get_object_vars($composer_json->extra->processmaker->enterprise);
+
             // We want just the package names for now
-            return get_object_vars($composer_json->extra->processmaker->enterprise);
-        } catch (Exception $exception) {
-            throw new LogicException('Enterprise packages not found in composer.json');
+            foreach ($packages as $package => $version) {
+                if ($package === 'packages') {
+                    unset($packages[$package]);
+                }
+            }
+
+            return $packages;
+        } catch (Throwable $exception) {
+            throw new LogicException('List of enterprise package versions not found. Exception Thrown:'.PHP_EOL.$exception->getMessage());
         }
     }
 

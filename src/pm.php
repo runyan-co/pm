@@ -9,7 +9,6 @@ use Illuminate\Support\Str;
 use ProcessMaker\Cli\Facades\Git;
 use ProcessMaker\Cli\Facades\Core;
 use ProcessMaker\Cli\Facades\CommandLine;
-use ProcessMaker\Cli\Facades\Docker;
 use ProcessMaker\Cli\Facades\Environment;
 use ProcessMaker\Cli\Facades\FileSystem;
 use ProcessMaker\Cli\Facades\Logs;
@@ -319,13 +318,15 @@ if (!is_dir(PM_HOME_PATH)) {
     $app->command('core:both [branch] [-4|--for_41_develop] [-d|--bounce-database] [--no-npm] [-y|--yes] [-w|--without-packages=] [-s|--skip-version-updates=]',
         function (InputInterface $input, OutputInterface $output) use ($app): void {
 
-		// This command (core:both) basically just let's us run both the
+		// This command (core:both) basically just lets us run both the
 		// core:reset command followed by the core:install-packages
 		// command to make it easier
 		$command = static function ($command) use ($input) {
-			// core:reset command options/arguments
+
+            // Target branch for the core codebase
             $branch = $input->getArgument('branch') ?? 'develop';
 
+            // core:reset command options/arguments
 			if (Str::contains($command, 'core:reset')) {
                 if ($branch) {
                     $command .= " {$branch}";
@@ -725,19 +726,19 @@ if (!is_dir(PM_HOME_PATH)) {
 		}
 
 		foreach ($packages as $package => $version) {
-			try {
-				$version = $should_use_develop ? 'develop' : "v{$version}";
-				$path = packages_path($package);
-				$result = Git::switchBranch($version, $path);
+            try {
+                $version = $should_use_develop ? 'develop' : "v{$version}";
+                $path = packages_path($package);
+                $result = Git::switchBranch($version, $path);
 
                 if ($should_output) {
                     output("<comment>{$package}:</comment> successfully updated to <info>{$version}</info>");
                 }
-			} catch (Throwable $exception) {
-				if ($should_output) {
-                    warning("Switching Branch Failed: {$exception->getMessage()}");
-				}
-			}
+            } catch (Throwable $exception) {
+                if ($should_output) {
+                    warning(PHP_EOL."Switching branch failed for {$package}:".PHP_EOL." {$exception->getMessage()}");
+                }
+            }
 		}
 
     })->descriptions('Update the local copies of packages to the version found in core\'s composer file');
@@ -754,9 +755,6 @@ if (!is_dir(PM_HOME_PATH)) {
         // Updates to 4.1-branch of packages (or not)
         $for_41_develop = $input->getOption('for_41_develop');
 
-        // Set verbosity level of output
-        $verbose = $input->getOption('verbose');
-
 		// Grab an instance of the Packages class
 		$packages = Packages::getInstance();
 
@@ -765,6 +763,9 @@ if (!is_dir(PM_HOME_PATH)) {
 
         // Store the pre-pull metadata for each package
 		$metadata = $packages->takePackagesSnapshot();
+
+        // Set verbosity level of output
+        $verbose = $input->getOption('verbose');
 
 		// Grab an instance ParallelRun
         $parallelRun = ParallelRun::getInstance();

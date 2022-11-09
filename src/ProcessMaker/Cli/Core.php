@@ -31,7 +31,7 @@ class Core
     public function clone()
     {
         // Save any IDE config files
-        if (IDE::hasConfiguration()) {
+        if (IDE::getConfigurationPath()) {
             self::$tempIdeConfigurationPath = IDE::temporarilyMoveConfiguration();
         }
 

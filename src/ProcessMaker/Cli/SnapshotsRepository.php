@@ -9,12 +9,16 @@ use DomainException;
 use RuntimeException;
 use Illuminate\Support\Str;
 use Illuminate\Support\Collection;
-use Symfony\Component\Console\Helper\Table;
-use Symfony\Component\Console\Output\ConsoleOutput;
 use Symfony\Component\Console\Helper\TableSeparator;
+use ProcessMaker\Cli\Facades\SnapshotsRepository as SnapshotsRepositoryFacade;
 
 class SnapshotsRepository
 {
+    /**
+     * @var int
+     */
+    private static $pid;
+
     /**
      * @var array
      */
@@ -35,6 +39,18 @@ class SnapshotsRepository
     public static function enable(): void
     {
         static::$display = true;
+    }
+
+    /**
+     * Set the master PHP process ID
+     *
+     * @param  int  $pid
+     *
+     * @return void
+     */
+    public static function setPid(int $pid): void
+    {
+        static::$pid = $pid;
     }
 
     /**
@@ -61,7 +77,11 @@ class SnapshotsRepository
     public function getSnapshots(): array
     {
         usort($this->repository, static function ($previous, $next) {
-            return $previous->microtime > $next->microtime;
+            if ($previous->microtime === $next->microtime) {
+                return 0;
+            }
+
+            return $previous->microtime > $next->microtime ? 1 : -1;
         });
 
         return Collection::make($this->repository)->keyBy(function ($value) {
@@ -76,6 +96,12 @@ class SnapshotsRepository
         }
 
         if (blank($snapshots = $this->getSnapshots())) {
+            return;
+        }
+
+        // Only output the stats for the primary PHP process before
+        // exiting (instead of any forked child processes)
+        if (getmypid() !== SnapshotsRepositoryFacade::getInstance()::$pid) {
             return;
         }
 

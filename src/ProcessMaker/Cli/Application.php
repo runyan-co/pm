@@ -59,7 +59,7 @@ class Application extends \Silly\Application
     /**
      * @inheritdoc
      */
-    protected function getDefaultInputDefinition(): object
+    public function getDefaultInputDefinition(): object
     {
         return tap(parent::getDefaultInputDefinition(), function ($definition) {
             $definition->addOption($this->getTimingOption());
@@ -73,6 +73,7 @@ class Application extends \Silly\Application
     {
         if ($input->hasParameterOption(['--timing', '-t'], true)) {
             SnapshotsRepository::enable();
+            SnapshotsRepository::setPid(getmypid());
         }
 
         if ($input->hasParameterOption(['--verbose', '-v', '-vv', '-vvv'], true)) {

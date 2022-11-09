@@ -91,7 +91,7 @@ class Git
             Cli::run('git clean -d -f .', null, $path);
         }
 
-        $switched = Cli::run("git checkout {$branchName}", function ($exit, $output): void {
+        $switched = Cli::run("git fetch origin {$branchName} && git checkout {$branchName}", function ($exit, $output): void {
             throw new RuntimeException($output);
         }, $path);
 

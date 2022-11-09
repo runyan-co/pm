@@ -22,8 +22,10 @@ class IDE
 
     /**
      * The temporary directory name
+     *
+     * @var false|string
      */
-    public static $tmp = 'tmp';
+    public static $tmp = false;
 
     /**
      * Check if a given path contains a project-specific IDE
@@ -32,9 +34,9 @@ class IDE
      *
      * @param  string|null  $path
      *
-     * @return void|string
+     * @return false|string
      */
-    public static function hasConfiguration(?string $path = null)
+    public static function getConfigurationPath(string $path = null)
     {
         foreach (self::$types as $ide => $file_name) {
             if (FileSystem::exists($path = ($path ? "{$path}/{$file_name}" : codebase_path($file_name)))) {
@@ -47,7 +49,7 @@ class IDE
      * Move temporarily stored IDE config file(s) from the tmp directory
      * back to its respective project directory
      */
-    public static function moveConfigurationBack(string $from, ?string $to = null): void
+    public static function moveConfigurationBack(string $from, string $to = null): void
     {
         if (!FileSystem::exists($from)) {
             return;
@@ -69,7 +71,7 @@ class IDE
      *
      * @return string|void
      */
-    public static function temporarilyMoveConfiguration(?string $path = null)
+    public static function temporarilyMoveConfiguration(string $path = null)
     {
         if (!FileSystem::exists($path = $path ?? codebase_path())) {
             return;
@@ -80,27 +82,21 @@ class IDE
 
         // Check for config files, if one exists then $path will
         // become the absolute path to the config file
-        if (!is_string($path = self::hasConfiguration($path))) {
+        if (!is_string($path = self::getConfigurationPath($path))) {
             return;
         }
 
         // Config filename
         $filename = basename($path);
 
-        // Create the tmp/ directory if it doesn't exist
-        if (!FileSystem::exists($tmp_path = pm_path(self::$tmp))) {
-            FileSystem::mkdir($tmp_path);
-        }
-
-        // Remove any pre-existing project configuration
-        // files in the temporary directory
-        if (FileSystem::exists($move_to_path = "{$tmp_path}/{$basename}")) {
-            FileSystem::rmdir($move_to_path);
+        // Find where we should write a new temp dir
+        if (file_exists(static::$tmp = tempnam(sys_get_temp_dir(), $filename))) {
+            unlink(static::$tmp);
         }
 
         // Create the project-specific directory name within the tmp
         // directory (in case we have other config files present)
-        FileSystem::mkdir($move_to_path);
+        FileSystem::mkdir($move_to_path = static::$tmp."/{$basename}");
 
         // Move the config files to the tmp directory and return it
         if (FileSystem::mv($path, $move_to_path)) {
