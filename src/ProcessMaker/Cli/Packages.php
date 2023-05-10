@@ -6,6 +6,7 @@ namespace ProcessMaker\Cli;
 
 use Throwable;
 use DomainException, Exception, LogicException, RuntimeException;
+use Spatie\Fork\Fork;
 use ProcessMaker\Cli\Facades\CommandLine as Cli;
 use ProcessMaker\Cli\Facades\Composer;
 use ProcessMaker\Cli\Facades\Git;
@@ -264,15 +265,21 @@ processmaker/processmaker should be on version 4.1.*. Please switch branches and
 
         asort($packages);
 
+        $closures = [];
+
         foreach ($packages as $index => $package) {
-            try {
-                if ($this->clonePackage($package)) {
-                    info("Package ${package} cloned successfully!");
+            $closures[] = function () use ($package) {
+                try {
+                    if ($this->clonePackage($package)) {
+                        info("Package ${package} cloned successfully!");
+                    }
+                } catch (Exception $exception) {
+                    warning($exception->getMessage());
                 }
-            } catch (Exception $exception) {
-                warning($exception->getMessage());
-            }
+            };
         }
+
+        Fork::new()->run(...$closures);
     }
 
     /**

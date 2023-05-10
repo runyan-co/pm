@@ -19,6 +19,7 @@ use ProcessMaker\Cli\Facades\ParallelRun;
 use ProcessMaker\Cli\Facades\Reset;
 use ProcessMaker\Cli\Facades\SnapshotsRepository as Snapshots;
 use ProcessMaker\Cli\Facades\Supervisor;
+use Spatie\Fork\Fork;
 
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -725,21 +726,27 @@ if (!is_dir(PM_HOME_PATH)) {
 			}
 		}
 
-		foreach ($packages as $package => $version) {
-            try {
-                $version = $should_use_develop ? 'develop' : "v{$version}";
-                $path = packages_path($package);
-                $result = Git::switchBranch($version, $path);
+        $closures = [];
 
-                if ($should_output) {
-                    output("<comment>{$package}:</comment> successfully updated to <info>{$version}</info>");
+		foreach ($packages as $package => $version) {
+            $closures[] = function () use ($should_output, $should_use_develop, $version, $package) {
+                try {
+                    $version = $should_use_develop ? 'develop' : "v{$version}";
+                    $path = packages_path($package);
+                    $result = Git::switchBranch($version, $path);
+
+                    if ($should_output) {
+                        output("<comment>{$package}:</comment> successfully updated to <info>{$version}</info>");
+                    }
+                } catch (Throwable $exception) {
+                    if ($should_output) {
+                        warning(PHP_EOL."Switching branch failed for {$package}:".PHP_EOL." {$exception->getMessage()}");
+                    }
                 }
-            } catch (Throwable $exception) {
-                if ($should_output) {
-                    warning(PHP_EOL."Switching branch failed for {$package}:".PHP_EOL." {$exception->getMessage()}");
-                }
-            }
+            };
 		}
+
+        Fork::new()->run(...$closures);
 
     })->descriptions('Update the local copies of packages to the version found in core\'s composer file');
 
