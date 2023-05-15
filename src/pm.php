@@ -278,10 +278,8 @@ if (!is_dir(PM_HOME_PATH)) {
         try {
             if (Supervisor::stop($process)) {
                 info('Supervisor process(es) successfully stopped.');
-            } else {
-                warning('Process(es) were already stopped or an error occurred while attempting to stop them.');
             }
-        } catch (RuntimeException $exception) {
+        } catch (Exception $exception) {
             output('<fg=red>Problem stopping process(es): </>'.PHP_EOL.$exception->getMessage());
         }
     })->descriptions('Attempt to stop the supervisor process by name if available, otherwise it stops all processes', [

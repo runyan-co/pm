@@ -17,17 +17,15 @@ class Supervisor
     {
         try {
             return is_string(Cli::run('supervisorctl status', static function ($exitCode, $output): void {
-                if (Str::contains($output, 'refused connection')) {
-                    throw new RuntimeException;
-                }
-
-                if (Str::contains($output, 'command not found')) {
-                    throw new RuntimeException;
+                if ($exitCode !== 0) {
+                    throw new RuntimeException($output ?? '');
                 }
             }));
-        } catch (RuntimeException $exception) {
-            return false;
+        } catch (RuntimeException $e) {
+            //
         }
+
+        return false;
     }
 
     /**
