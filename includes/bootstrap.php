@@ -19,7 +19,7 @@ Container::setInstance($container = new Container);
 Container::getInstance()
     ->when(\ProcessMaker\Cli\Application::class)
     ->needs('$version')
-    ->give('2.0.1');
+    ->give('2.1.0');
 
 $app = \ProcessMaker\Cli\Facades\Application::getInstance();
 
