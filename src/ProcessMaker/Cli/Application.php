@@ -30,7 +30,7 @@ class Application extends \Silly\Application
         if (!$this->getContainer()) {
             $this->useContainer(Container::getInstance());
         }
-
+        
         $this->registerSignals();
     }
 

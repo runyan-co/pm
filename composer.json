@@ -13,7 +13,7 @@
         }
     ],
     "require": {
-        "php": ">=7.2",
+        "php": ">=8.2",
         "ext-json": "*",
         "ext-posix": "*",
         "illuminate/support": "^8.83",
@@ -23,7 +23,7 @@
         "symfony/process": "^5.4",
         "symfony/console": "^5.4",
         "mockery/mockery": "^1.5",
-        "spatie/fork": "^1.1"
+        "spatie/fork": "^1.2"
     },
     "require-dev": {
         "beyondcode/laravel-dump-server": "^1.8",

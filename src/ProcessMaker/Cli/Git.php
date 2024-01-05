@@ -19,11 +19,11 @@ class Git
     public function validateGitRepository(string $path): void
     {
         if (! FileSystem::is_dir($path)) {
-            throw new LogicException("Directory to git repository does not exist: ${path}");
+            throw new LogicException("Directory to git repository does not exist: {$path}");
         }
 
-        if (! FileSystem::exists("${path}/.git")) {
-            throw new LogicException("Git repository not found in directory: ${path}");
+        if (! FileSystem::exists("{$path}/.git")) {
+            throw new LogicException("Git repository not found in directory: {$path}");
         }
     }
 
@@ -111,8 +111,8 @@ class Git
     {
         $cmd = static function (string $repository) use ($name) {
             $command = is_string($token = getenv('GITHUB_TOKEN'))
-                ? "git clone https://${token}@github.com/ProcessMaker/${repository}"
-                : "git clone https://github.com/ProcessMaker/${repository}";
+                ? "git clone https://{$token}@github.com/ProcessMaker/{$repository}"
+                : "git clone https://github.com/ProcessMaker/{$repository}";
 
             return $name ? "{$command} {$name}" : $command;
         };

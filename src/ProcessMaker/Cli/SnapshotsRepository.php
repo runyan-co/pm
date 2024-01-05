@@ -323,16 +323,16 @@ class SnapshotsRepository
             $minutes = round(abs($seconds - (int) Str::before((string) $seconds, '.')) * 60, 2);
             $hours = (int) Str::before((string) $hours, '.');
 
-            return "${hours}h and ${minutes}m";
+            return "{$hours}h and {$minutes}m";
         }
 
         if ($minutes >= 1.000000) {
             $seconds = round(abs($minutes - (int) Str::before((string) $minutes, '.')) * 60);
             $minutes = (int) Str::before((string) $minutes, '.');
 
-            return "${minutes}m and ${seconds}s";
+            return "{$minutes}m and {$seconds}s";
         }
 
-        return ($seconds = round($seconds, 2)) === 0.00 ? '< 1s' : "${seconds}s";
+        return ($seconds = round($seconds, 2)) === 0.00 ? '< 1s' : "{$seconds}s";
     }
 }

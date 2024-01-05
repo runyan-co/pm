@@ -127,7 +127,7 @@ if (!is_dir(PM_HOME_PATH)) {
 			$config = (object) $config;
 			$description = strtolower($config->description);
 			$default = !blank($config->default) ? $config->default : null;
-			$question = "<comment>Step ${current} of ${count}</comment>".PHP_EOL."<info>Please enter the {$description}:</info>";
+			$question = "<comment>Step $current of $count</comment>".PHP_EOL."<info>Please enter the $description:</info>";
 
 			if ($default) {
 				$question .= " (defaults to: {$default})";
@@ -151,8 +151,8 @@ if (!is_dir(PM_HOME_PATH)) {
 						}
 
                         // Check for composer.json
-                        if (!FileSystem::exists("${value}/composer.json")) {
-                            throw new RuntimeException("Please try again: Could not find the composer.json for processmaker/processmaker in: ${value}");
+                        if (!FileSystem::exists("$value/composer.json")) {
+                            throw new RuntimeException("Please try again: Could not find the composer.json for processmaker/processmaker in: $value");
                         }
 
 						return $value;
@@ -435,7 +435,7 @@ if (!is_dir(PM_HOME_PATH)) {
 
             // Iterate through them and execute
             foreach ($command_set as $type_of_commands => $commands) {
-                $cli->getProgress()->setMessage("Running ${type_of_commands} commands...");
+                $cli->getProgress()->setMessage("Running $type_of_commands commands...");
 
                 foreach ($commands as $command) {
                     try {
@@ -445,7 +445,7 @@ if (!is_dir(PM_HOME_PATH)) {
                     } catch (RuntimeException $exception) {
                         $cli->getProgress()->clear();
 
-                        output("<fg=red>Command Failed:</> ${command}");
+                        output("<fg=red>Command Failed:</> $command");
                         output($exception->getMessage());
 
                         exit(0);
@@ -457,7 +457,7 @@ if (!is_dir(PM_HOME_PATH)) {
 
                     $cli->getProgress()->clear();
 
-                    output("<info>Command Successful:</info> ${command}");
+                    output("<info>Command Successful:</info> $command");
                     output($out);
 
                     $cli->getProgress()->display();
@@ -496,7 +496,7 @@ if (!is_dir(PM_HOME_PATH)) {
             $timing = Snapshots::getTimeElapsed();
 
             // Output and we're done!
-            output(PHP_EOL."<info>Finished in</info> ${timing}");
+            output(PHP_EOL."<info>Finished in</info> $timing");
         }
     )->descriptions('Reset the core codebase, install composer and npm dependencies, builds npm assets', [
 		'branch' => 'Default: \'develop\'. Otherwise will try to switch to the branch name provided.',
@@ -620,7 +620,7 @@ if (!is_dir(PM_HOME_PATH)) {
                 // todo Clean this up as checking for the type of command like this is not ideal
                     $message = $package === 'horizon'
 	                    ? 'Restarting horizon...'
-	                    : "Installing ${package}...";
+	                    : "Installing $package...";
 
                     // Update the progress bar
                     $cli->getProgress()->setMessage($message);
@@ -633,7 +633,7 @@ if (!is_dir(PM_HOME_PATH)) {
                     } catch (RuntimeException $exception) {
                         $cli->getProgress()->clear();
 
-                        output("<fg=red>Command Failed:</> ${command}");
+                        output("<fg=red>Command Failed:</> $command");
                         output($exception->getMessage());
 
                         $cli->getProgress()->display();
@@ -650,7 +650,7 @@ if (!is_dir(PM_HOME_PATH)) {
                     // (in addition to the ones which failed)
                     $cli->getProgress()->clear();
 
-                    output("<info>Command Success:</info> ${command}");
+                    output("<info>Command Success:</info> $command");
                     output($command_output);
 
                     $cli->getProgress()->display();
@@ -673,7 +673,7 @@ if (!is_dir(PM_HOME_PATH)) {
             $timing = Snapshots::getTimeElapsed();
 
             // Output and we're done!
-            output(PHP_EOL."<info>Finished in</info> ${timing}");
+            output(PHP_EOL."<info>Finished in</info> $timing");
         }
     )->descriptions('Installs all enterprise packages in the local ProcessMaker core (processmaker/processmaker) codebase.', [
             '--for_41_develop' => 'Uses 4.1 version of the supported packages',

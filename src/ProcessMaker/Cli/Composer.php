@@ -18,17 +18,17 @@ class Composer
     public function getComposerJson(string $path_to_composer_json)
     {
         if (!FileSystem::is_dir($path_to_composer_json)) {
-            throw new LogicException("Path to composer.json not found: ${path_to_composer_json}");
+            throw new LogicException("Path to composer.json not found: {$path_to_composer_json}");
         }
 
         if (Str::endsWith($path_to_composer_json, '/')) {
             $path_to_composer_json = Str::replaceLast('/', '', $path_to_composer_json);
         }
 
-        $composer_json_file = "${path_to_composer_json}/composer.json";
+        $composer_json_file = "{$path_to_composer_json}/composer.json";
 
         if (!FileSystem::exists($composer_json_file)) {
-            throw new RuntimeException("Composer.json not found: ${composer_json_file}");
+            throw new RuntimeException("Composer.json not found: {$composer_json_file}");
         }
 
         return json_decode(FileSystem::get($composer_json_file), false);
@@ -41,7 +41,7 @@ class Composer
     {
         $packagesPath = packages_path();
 
-        Cli::runCommand("composer config repositories.pm4-packages path ${packagesPath}/*",
+        Cli::runCommand("composer config repositories.pm4-packages path {$packagesPath}/*",
             function ($code, $output): void {
                 throw new RuntimeException($output);
         }, Config::codebasePath());
@@ -54,7 +54,7 @@ class Composer
      */
     public function require($packages): void
     {
-        Cli::runCommand("composer require ${packages}", function ($code, $output): void {
+        Cli::runCommand("composer require {$packages}", function ($code, $output): void {
             throw new RuntimeException($output);
         }, Config::codebasePath());
     }

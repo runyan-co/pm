@@ -81,7 +81,7 @@ class Packages
         }
 
         if (!array_key_exists($name, $this->getPackages())) {
-            throw new LogicException("Package with name \"${name}\" does not exist locally.");
+            throw new LogicException("Package with name \"{$name}\" does not exist locally.");
         }
 
         return $this->getPackages()[$name];
@@ -192,7 +192,10 @@ processmaker/processmaker should be on version 4.1.*. Please switch branches and
                 $composer_json = Composer::getComposerJson($packages_path);
             }
 
-            $packages = get_object_vars($composer_json->extra->processmaker->enterprise);
+            $packages = array_merge(
+                get_object_vars($composer_json->extra->processmaker->enterprise),
+                get_object_vars($composer_json->extra->processmaker?->custom)
+            );
 
             // We want just the package names for now
             foreach ($packages as $package => $version) {
@@ -227,10 +230,6 @@ processmaker/processmaker should be on version 4.1.*. Please switch branches and
 
         $command = "git clone https://github.com/ProcessMaker/{$name}";
 
-        if (in_array($name, static::$fourPointOneOnlyPackages, true)) {
-            $command .= " && cd ".packages_path($name)." && git checkout 4.1-develop";
-        }
-
         Cli::run($command, function ($code, $out) use ($name): void {
             throw new RuntimeException("Failed to clone {$name}: ".PHP_EOL.$out);
         }, packages_path());
@@ -257,21 +256,19 @@ processmaker/processmaker should be on version 4.1.*. Please switch branches and
             }
         }
 
-        // Clone down all 4.2 and 4.1 packages
-        $packages = array_merge(
-            $this->getSupportedPackages(),
-            static::$fourPointOneOnlyPackages
-        );
+        $packages = $this->getSupportedPackages();
 
         asort($packages);
 
+        $packages = array_values($packages);
+
         $closures = [];
 
-        foreach ($packages as $index => $package) {
+        foreach ($packages as $package) {
             $closures[] = function () use ($package) {
                 try {
                     if ($this->clonePackage($package)) {
-                        info("Package ${package} cloned successfully!");
+                        info("Package {$package} cloned successfully!");
                     }
                 } catch (Exception $exception) {
                     warning($exception->getMessage());
@@ -331,7 +328,7 @@ processmaker/processmaker should be on version 4.1.*. Please switch branches and
         $packages = array_map(static function ($package_name) {
             return [
                 'name' => $package_name,
-                'path' => packages_path("/${package_name}"),
+                'path' => packages_path("/{$package_name}"),
             ];
         }, $this->getPackagesListFromDirectory());
 
@@ -420,7 +417,7 @@ processmaker/processmaker should be on version 4.1.*. Please switch branches and
             ];
 
             $commands[$package->name] = array_map(static function ($command) use ($package) {
-                return "cd {$package->path} && ${command}";
+                return "cd {$package->path} && {$command}";
             }, $package_commands);
         }
 
@@ -483,7 +480,7 @@ processmaker/processmaker should be on version 4.1.*. Please switch branches and
 
         // Build the stack of commands to run
         return $enterprise_packages->transform(function (string $package) use ($composer) {
-            $artisan_install_command = PHP_BINARY." artisan ${package}:install --no-interaction";
+            $artisan_install_command = PHP_BINARY." artisan {$package}:install --no-interaction";
 
             // Concatenate API keys for packages which require them
             if ($package === 'connector-slack' && ! blank($key = Install::get('slack_api_key'))) {

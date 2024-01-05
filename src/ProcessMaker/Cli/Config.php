@@ -111,7 +111,7 @@ class Config
             $path = Install::read('packages_path');
         }
 
-        return $file_name ? "${path}/${file_name}" : $path;
+        return $file_name ? "{$path}/{$file_name}" : $path;
     }
 
     /**
@@ -127,7 +127,7 @@ class Config
             $path = Install::read('codebase_path');
         }
 
-        return $file_name ? "${path}/${file_name}" : $path;
+        return $file_name ? "{$path}/{$file_name}" : $path;
     }
 
     /**
@@ -139,6 +139,6 @@ class Config
     {
         $path = Install::read('log_path');
 
-        return $file_name ? "${path}/${file_name}" : $path;
+        return $file_name ? "{$path}/{$file_name}" : $path;
     }
 }
